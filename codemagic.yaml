@@ -4,9 +4,11 @@
 # Workflows
 #   android-build  Runs the tests, then builds a release APK and App Bundle (AAB).
 #                  Runs on every push to main and on pull requests.
-#   ios-build      Checks that the iOS app compiles (unsigned build). Start it
-#                  manually from Codemagic. Signing for TestFlight / App Store
-#                  needs an Apple Developer account; see the notes at the end.
+#   ios-build      Builds an unsigned iPhone app (HomeManagement-unsigned.ipa).
+#                  Start it manually from Codemagic. Install it on your iPhone
+#                  with Sideloadly and a free Apple ID (it is signed on your
+#                  PC during install). TestFlight needs a paid Apple Developer
+#                  account; see the notes at the end.
 #
 # Builds use Codemagic's macOS M2 machines, which come with the free
 # 500 build minutes per month.
@@ -84,7 +86,7 @@ workflows:
       <<: *email
 
   ios-build:
-    name: iOS build (unsigned)
+    name: iOS build (unsigned IPA for sideloading)
     instance_type: mac_mini_m2
     max_build_duration: 60
     environment:
@@ -99,20 +101,22 @@ workflows:
       # flutter build installs the CocoaPods dependencies itself.
       - name: Build iOS app (no code signing)
         script: flutter build ios --release --no-codesign --build-number=$BUILD_NUMBER
-      - name: Package Runner.app
+      - name: Package unsigned IPA
         script: |
-          cd build/ios/iphoneos
-          zip -r "$CM_BUILD_DIR/Runner-unsigned.zip" Runner.app
+          mkdir -p ipa/Payload
+          cp -R build/ios/iphoneos/Runner.app ipa/Payload/
+          cd ipa && zip -qry "$CM_BUILD_DIR/HomeManagement-unsigned.ipa" Payload
     artifacts:
-      - Runner-unsigned.zip
+      - HomeManagement-unsigned.ipa
       - /tmp/xcodebuild_logs/*.log
     publishing:
       <<: *email
 
 # Signed iOS builds (TestFlight / App Store), when you have an Apple
 # Developer account:
-#   1. Register the iOS app in Firebase (bundle ID
-#      com.mahmoudessam.homemanagement) and add ios/Runner/GoogleService-Info.plist.
+#   (The iOS app is already registered in Firebase.)
+#   1. Create the App ID com.mahmoudessam.homemanagement and the app record in
+#      App Store Connect.
 #   2. In Codemagic, add an App Store Connect API key under
 #      Team settings > Integrations > Developer Portal.
 #   3. In ios-build, add to environment:

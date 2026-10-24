@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Homemanagement</string>
+	<string>Home Management</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -24,6 +24,22 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<!-- Reversed iOS client ID, so Google Sign-In can return to the app. -->
+				<string>com.googleusercontent.apps.683347678237-qqi76vdrvf4up2uoq7r3g542sd2ljj7o</string>
+			</array>
+		</dict>
+	</array>
+	<key>GIDClientID</key>
+	<string>683347678237-qqi76vdrvf4up2uoq7r3g542sd2ljj7o.apps.googleusercontent.com</string>
+	<key>GIDServerClientID</key>
+	<string>683347678237-77buab1sqi97d20kpev8ai5qkl1rv5ou.apps.googleusercontent.com</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>

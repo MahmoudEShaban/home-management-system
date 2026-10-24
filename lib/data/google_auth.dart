@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'package:google_sign_in/google_sign_in.dart';
 
 import '../firebase_options.dart';
@@ -12,7 +13,10 @@ class GoogleAuth {
 
   static Future<GoogleSignIn> _ready() async {
     _init ??= GoogleSignIn.instance.initialize(
-      // Needed on Android so Firebase Auth receives an ID token.
+      clientId: defaultTargetPlatform == TargetPlatform.iOS
+          ? DefaultFirebaseOptions.iosClientId
+          : null,
+      // Needed so Firebase Auth receives an ID token it accepts.
       serverClientId: DefaultFirebaseOptions.webClientId,
     );
     await _init;
