@@ -1,0 +1,135 @@
+rules_version = '2';
+
+// Managers own everything under users/{managerUid}. Residents linked to a flat
+// (users/{managerUid}/members/{residentUid}) can read only their building and
+// its flats, the building's expenses and their own flat's invoices. Residents
+// suggest expenses in expenseProposals; only the manager can approve them.
+// Notifications go to inbox/{uid}; each phone shows new ones itself.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isOwner(uid) { return signedIn() && request.auth.uid == uid; }
+    function memberPath(managerId) {
+      return /databases/$(database)/documents/users/$(managerId)/members/$(request.auth.uid);
+    }
+    function isMember(managerId) { return signedIn() && exists(memberPath(managerId)); }
+    function member(managerId) { return get(memberPath(managerId)).data; }
+
+    match /users/{managerId} {
+      allow read, write: if isOwner(managerId);
+      // Residents read the manager's invoice profile (name, currency).
+      allow read: if isMember(managerId);
+
+      // Manager-only data (tenants, payments, …) and everything else.
+      match /{document=**} {
+        allow read, write: if isOwner(managerId);
+      }
+
+      match /members/{residentId} {
+        allow read: if isOwner(residentId);
+      }
+      match /properties/{propertyId} {
+        allow read: if isMember(managerId) && member(managerId).propertyId == propertyId;
+      }
+      // Residents see the flats of their own building (names, floors, status,
+      // fixed cost) so they can preview how an expense is split.
+      match /units/{unitId} {
+        allow read: if isMember(managerId)
+          && resource.data.propertyId == member(managerId).propertyId;
+      }
+      match /expenses/{expenseId} {
+        allow read: if isMember(managerId)
+          && resource.data.propertyId == member(managerId).propertyId;
+      }
+      match /invoices/{invoiceId} {
+        allow read: if isMember(managerId)
+          && resource.data.unitId == member(managerId).unitId;
+      }
+      // Dues payments: residents see their building's payments (for the
+      // overview) and can mark their own flat as paid. Only the manager can
+      // confirm or reject.
+      match /duesPayments/{paymentId} {
+        allow read: if isMember(managerId)
+          && resource.data.propertyId == member(managerId).propertyId;
+        allow create, update: if isMember(managerId)
+          && request.resource.data.unitId == member(managerId).unitId
+          && request.resource.data.propertyId == member(managerId).propertyId
+          && request.resource.data.status == 'claimed'
+          && request.resource.data.paidByUid == request.auth.uid
+          && (resource == null || resource.data.status != 'confirmed');
+      }
+    }
+
+    // Building codes: anyone signed in can look up a code they were given,
+    // but only the manager can list, create or change their codes.
+    match /buildingCodes/{code} {
+      allow get: if signedIn();
+      allow list: if signedIn() && resource.data.managerUid == request.auth.uid;
+      allow create: if signedIn() && request.resource.data.managerUid == request.auth.uid;
+      allow update: if signedIn()
+        && resource.data.managerUid == request.auth.uid
+        && request.resource.data.managerUid == request.auth.uid;
+      allow delete: if signedIn() && resource.data.managerUid == request.auth.uid;
+    }
+
+    // One join request per resident, addressed to the code's manager.
+    match /joinRequests/{residentId} {
+      function codeDoc() {
+        return get(/databases/$(database)/documents/buildingCodes/$(request.resource.data.code)).data;
+      }
+      allow get: if isOwner(residentId)
+        || (signedIn() && resource.data.managerUid == request.auth.uid);
+      allow list: if signedIn() && resource.data.managerUid == request.auth.uid;
+      allow create: if isOwner(residentId)
+        && request.resource.data.residentUid == residentId
+        && request.resource.data.status == 'pending'
+        && codeDoc().managerUid == request.resource.data.managerUid
+        && codeDoc().propertyId == request.resource.data.propertyId;
+      // Only the manager decides; they cannot re-address the request.
+      allow update: if signedIn()
+        && resource.data.managerUid == request.auth.uid
+        && request.resource.data.managerUid == resource.data.managerUid
+        && request.resource.data.residentUid == resource.data.residentUid
+        && request.resource.data.unitId == resource.data.unitId;
+      allow delete: if isOwner(residentId)
+        || (signedIn() && resource.data.managerUid == request.auth.uid);
+    }
+
+    // Expenses suggested by residents, waiting for the manager's decision.
+    match /expenseProposals/{proposalId} {
+      function newMember() {
+        return get(/databases/$(database)/documents/users/$(request.resource.data.managerUid)/members/$(request.auth.uid)).data;
+      }
+      allow create: if signedIn()
+        && request.resource.data.residentUid == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && exists(/databases/$(database)/documents/users/$(request.resource.data.managerUid)/members/$(request.auth.uid))
+        && newMember().propertyId == request.resource.data.propertyId
+        && newMember().unitId == request.resource.data.unitId;
+      allow read: if signedIn()
+        && (resource.data.residentUid == request.auth.uid || resource.data.managerUid == request.auth.uid);
+      // Only the manager decides, and cannot re-address the proposal.
+      allow update: if signedIn()
+        && resource.data.managerUid == request.auth.uid
+        && request.resource.data.managerUid == resource.data.managerUid
+        && request.resource.data.residentUid == resource.data.residentUid;
+      // Residents can withdraw while waiting; the manager can always remove.
+      allow delete: if signedIn()
+        && ((resource.data.residentUid == request.auth.uid && resource.data.status == 'pending')
+            || resource.data.managerUid == request.auth.uid);
+    }
+
+    // Each user's notifications. The owner reads and marks them read.
+    // A manager can write to their linked residents, a resident to their
+    // manager, and anyone to themselves.
+    match /inbox/{uid}/items/{itemId} {
+      allow read, update, delete: if isOwner(uid);
+      allow create: if signedIn()
+        && request.resource.data.senderUid == request.auth.uid
+        && request.resource.data.read == false
+        && (uid == request.auth.uid
+            || exists(/databases/$(database)/documents/users/$(request.auth.uid)/members/$(uid))
+            || exists(/databases/$(database)/documents/users/$(uid)/members/$(request.auth.uid)));
+    }
+  }
+}

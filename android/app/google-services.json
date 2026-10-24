@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "683347678237",
+    "project_id": "home-management-system-d7381",
+    "storage_bucket": "home-management-system-d7381.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:683347678237:android:2bec8aca6baf6b987662f4",
+        "android_client_info": {
+          "package_name": "com.mahmoudessam.homemanagement"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "683347678237-77buab1sqi97d20kpev8ai5qkl1rv5ou.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDGhNxpxqa81lMlAHOAol1egcoaVOGRLoY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "683347678237-77buab1sqi97d20kpev8ai5qkl1rv5ou.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

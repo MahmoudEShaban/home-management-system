@@ -1,0 +1,327 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart' hide TextDirection;
+
+import '../data/models.dart';
+import '../data/providers.dart';
+import '../l10n/strings.dart';
+
+// ─────────────────────────────── Formatting ───────────────────────────────
+
+extension Formatting on BuildContext {
+  String get _locale => Localizations.localeOf(this).languageCode;
+
+  String fmtDate(DateTime d) => DateFormat.yMMMd(_locale).format(d);
+  String fmtMonth(DateTime d) => DateFormat.yMMMM(_locale).format(d);
+  String fmtPeriod(String key) =>
+      key.isEmpty ? '' : fmtMonth(periodStart(key));
+}
+
+/// Formats an amount with the account currency, e.g. "EGP 12,500.00".
+String money(WidgetRef ref, BuildContext context, double v) {
+  final currency = ref.watch(profileProvider).value?.currency ?? 'EGP';
+  return formatMoney(v, currency, Localizations.localeOf(context).languageCode);
+}
+
+String formatMoney(double v, String currency, String locale) {
+  final f = NumberFormat.currency(
+    locale: locale == 'ar' ? 'ar_EG' : 'en',
+    symbol: '$currency ',
+    decimalDigits: v == v.roundToDouble() ? 0 : 2,
+  );
+  return f.format(v);
+}
+
+// ─────────────────────────────── Theme ───────────────────────────────
+
+const _seed = Color(0xFF1F6F5C);
+
+ThemeData buildTheme(Brightness brightness) {
+  final scheme = ColorScheme.fromSeed(seedColor: _seed, brightness: brightness);
+  return ThemeData(
+    useMaterial3: true,
+    colorScheme: scheme,
+    scaffoldBackgroundColor: brightness == Brightness.light
+        ? const Color(0xFFF6F7F5)
+        : scheme.surface,
+    appBarTheme: AppBarTheme(
+      centerTitle: false,
+      backgroundColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      foregroundColor: scheme.onSurface,
+    ),
+    inputDecorationTheme: InputDecorationTheme(
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      filled: true,
+      fillColor: scheme.surfaceContainerLowest,
+    ),
+    listTileTheme: const ListTileThemeData(
+      contentPadding: EdgeInsetsDirectional.only(start: 16, end: 8),
+    ),
+  );
+}
+
+// ─────────────────────────────── Widgets ───────────────────────────────
+
+class EmptyState extends StatelessWidget {
+  const EmptyState({super.key, required this.icon, required this.message, this.action});
+  final IconData icon;
+  final String message;
+  final Widget? action;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 56, color: cs.outline),
+            const SizedBox(height: 12),
+            Text(message,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: cs.onSurfaceVariant)),
+            if (action != null) ...[const SizedBox(height: 16), action!],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// White rounded panel used to group content.
+class Panel extends StatelessWidget {
+  const Panel({super.key, required this.child, this.padding = const EdgeInsets.all(16)});
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.6)),
+      ),
+      padding: padding,
+      child: child,
+    );
+  }
+}
+
+class SectionTitle extends StatelessWidget {
+  const SectionTitle(this.text, {super.key, this.trailing});
+  final String text;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsetsDirectional.fromSTEB(4, 20, 4, 8),
+        child: Row(children: [
+          Expanded(
+            child: Text(text,
+                style: Theme.of(context)
+                    .textTheme
+                    .titleSmall
+                    ?.copyWith(fontWeight: FontWeight.w700)),
+          ),
+          if (trailing != null) trailing!,
+        ]),
+      );
+}
+
+class StatusChip extends StatelessWidget {
+  const StatusChip({super.key, required this.label, required this.color});
+  final String label;
+  final Color color;
+
+  factory StatusChip.invoice(BuildContext context, InvoiceStatus s) =>
+      StatusChip(
+        label: context.t.invoiceStatus(s),
+        color: switch (s) {
+          InvoiceStatus.paid => const Color(0xFF2E7D32),
+          InvoiceStatus.unpaid => const Color(0xFFB26A00),
+          InvoiceStatus.cancelled => Colors.grey,
+        },
+      );
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(label,
+            style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 12)),
+      );
+}
+
+IconData expenseIcon(ExpenseCategory c) => switch (c) {
+      ExpenseCategory.electricity => Icons.bolt,
+      ExpenseCategory.water => Icons.water_drop_outlined,
+      ExpenseCategory.gas => Icons.local_fire_department_outlined,
+      ExpenseCategory.internet => Icons.wifi,
+      ExpenseCategory.maintenance => Icons.build_outlined,
+      ExpenseCategory.cleaning => Icons.cleaning_services_outlined,
+      ExpenseCategory.security => Icons.shield_outlined,
+      ExpenseCategory.elevator => Icons.elevator_outlined,
+      ExpenseCategory.taxes => Icons.receipt_long_outlined,
+      ExpenseCategory.other => Icons.more_horiz,
+    };
+
+/// "‹ October 2026 ›" bar bound to [selectedMonthProvider].
+class MonthSwitcher extends ConsumerWidget {
+  const MonthSwitcher({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final month = ref.watch(selectedMonthProvider);
+    void shift(int delta) => ref.read(selectedMonthProvider.notifier).state =
+        DateTime(month.year, month.month + delta);
+    final isRtl = Directionality.of(context) == TextDirection.rtl;
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        IconButton(
+          onPressed: () => shift(-1),
+          icon: Icon(isRtl ? Icons.chevron_right : Icons.chevron_left),
+        ),
+        TextButton(
+          onPressed: () async {
+            final picked = await showDatePicker(
+              context: context,
+              initialDate: month,
+              firstDate: DateTime(2000),
+              lastDate: DateTime(2100),
+              initialDatePickerMode: DatePickerMode.year,
+            );
+            if (picked != null) {
+              ref.read(selectedMonthProvider.notifier).state =
+                  DateTime(picked.year, picked.month);
+            }
+          },
+          child: Text(context.fmtMonth(month),
+              style: Theme.of(context).textTheme.titleMedium),
+        ),
+        IconButton(
+          onPressed: () => shift(1),
+          icon: Icon(isRtl ? Icons.chevron_left : Icons.chevron_right),
+        ),
+      ],
+    );
+  }
+}
+
+Future<bool> confirmDialog(BuildContext context, String message,
+    {String? confirmLabel, bool destructive = true}) async {
+  final t = context.t;
+  final result = await showDialog<bool>(
+    context: context,
+    builder: (c) => AlertDialog(
+      content: Text(message),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(c, false), child: Text(t.cancel)),
+        FilledButton(
+          style: destructive
+              ? FilledButton.styleFrom(backgroundColor: Theme.of(c).colorScheme.error)
+              : null,
+          onPressed: () => Navigator.pop(c, true),
+          child: Text(confirmLabel ?? t.confirm),
+        ),
+      ],
+    ),
+  );
+  return result ?? false;
+}
+
+void toast(BuildContext context, String message) {
+  ScaffoldMessenger.of(context)
+    ..hideCurrentSnackBar()
+    ..showSnackBar(SnackBar(content: Text(message)));
+}
+
+// ─────────────────────────────── Form helpers ───────────────────────────────
+
+String? Function(String?) requiredValidator(BuildContext context) =>
+    (v) => (v == null || v.trim().isEmpty) ? context.t.requiredField : null;
+
+String? Function(String?) numberValidator(BuildContext context,
+        {bool isRequired = true}) =>
+    (v) {
+      final s = (v ?? '').trim();
+      if (s.isEmpty) return isRequired ? context.t.requiredField : null;
+      return parseNumber(s) == null ? context.t.invalidNumber : null;
+    };
+
+/// Accepts Latin and Arabic-Indic digits, commas as thousands separators.
+double? parseNumber(String s) {
+  const arabic = '٠١٢٣٤٥٦٧٨٩';
+  final buf = StringBuffer();
+  for (final ch in s.trim().split('')) {
+    final i = arabic.indexOf(ch);
+    if (i >= 0) {
+      buf.write(i);
+    } else if (ch == '٫') {
+      buf.write('.');
+    } else if (ch != ',' && ch != '٬') {
+      buf.write(ch);
+    }
+  }
+  return double.tryParse(buf.toString());
+}
+
+String numText(double v) =>
+    v == 0 ? '' : (v == v.roundToDouble() ? v.toInt().toString() : v.toString());
+
+/// Read-only field that opens a date picker.
+class DateField extends StatelessWidget {
+  const DateField({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.onChanged,
+    this.allowClear = false,
+  });
+  final String label;
+  final DateTime? value;
+  final ValueChanged<DateTime?> onChanged;
+  final bool allowClear;
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () async {
+          final picked = await showDatePicker(
+            context: context,
+            initialDate: value ?? DateTime.now(),
+            firstDate: DateTime(2000),
+            lastDate: DateTime(2100),
+          );
+          if (picked != null) onChanged(picked);
+        },
+        child: InputDecorator(
+          decoration: InputDecoration(
+            labelText: label,
+            suffixIcon: allowClear && value != null
+                ? IconButton(icon: const Icon(Icons.clear), onPressed: () => onChanged(null))
+                : const Icon(Icons.calendar_today_outlined, size: 20),
+          ),
+          child: Text(value == null ? '—' : context.fmtDate(value!)),
+        ),
+      );
+}
+
+/// Shows a form screen as a full-screen route.
+Future<T?> pushForm<T>(BuildContext context, Widget form) =>
+    Navigator.of(context).push<T>(MaterialPageRoute(builder: (_) => form, fullscreenDialog: true));
+
+Future<T?> push<T>(BuildContext context, Widget page) =>
+    Navigator.of(context).push<T>(MaterialPageRoute(builder: (_) => page));
+
+const gap8 = SizedBox(height: 8, width: 8);
+const gap12 = SizedBox(height: 12, width: 12);
+const gap16 = SizedBox(height: 16, width: 16);
