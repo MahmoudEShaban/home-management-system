@@ -105,10 +105,26 @@ workflows:
       # flutter build installs the CocoaPods dependencies itself.
       - name: Build iOS app (no code signing)
         script: flutter build ios --release --no-codesign --build-number=$BUILD_NUMBER
-      - name: Package unsigned IPA
+      - name: Package IPA for sideloading
+        # Ad-hoc sign the app and its frameworks so it has a code signature
+        # that Sideloadly can replace with the user's Apple ID signature.
+        # A completely unsigned app is rejected by the iPhone with
+        # "No code signature found".
         script: |
+          set -e
           mkdir -p ipa/Payload
           cp -R build/ios/iphoneos/Runner.app ipa/Payload/
+          APP=ipa/Payload/Runner.app
+          if [ -d "$APP/Frameworks" ]; then
+            find "$APP/Frameworks" -maxdepth 1 \( -name '*.framework' -o -name '*.dylib' \) -print0 |
+              while IFS= read -r -d '' f; do codesign --force --sign - --timestamp=none "$f"; done
+          fi
+          if [ -d "$APP/PlugIns" ]; then
+            find "$APP/PlugIns" -maxdepth 1 -name '*.appex' -print0 |
+              while IFS= read -r -d '' f; do codesign --force --sign - --timestamp=none "$f"; done
+          fi
+          codesign --force --sign - --timestamp=none "$APP"
+          codesign --verify --deep --verbose=2 "$APP"
           cd ipa && zip -qry "$CM_BUILD_DIR/HomeManagement-unsigned.ipa" Payload
     artifacts:
       - HomeManagement-unsigned.ipa
