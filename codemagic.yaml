@@ -1,0 +1,126 @@
+# Codemagic CI/CD for Home Management System
+# https://docs.codemagic.io/yaml-quick-start/building-a-flutter-app/
+#
+# Workflows
+#   android-build  Runs the tests, then builds a release APK and App Bundle (AAB).
+#                  Runs on every push to main and on pull requests.
+#   ios-build      Checks that the iOS app compiles (unsigned build). Start it
+#                  manually from Codemagic. Signing for TestFlight / App Store
+#                  needs an Apple Developer account; see the notes at the end.
+#
+# Builds use Codemagic's macOS M2 machines, which come with the free
+# 500 build minutes per month.
+
+definitions:
+  env_versions: &env_versions
+    flutter: 3.47.8
+    java: 21
+    xcode: latest
+    cocoapods: default
+
+  scripts:
+    - &get_packages
+      name: Get Flutter packages
+      script: flutter pub get
+    - &analyze
+      name: Analyze code
+      script: flutter analyze --no-fatal-infos --no-fatal-warnings
+      ignore_failure: true
+    - &tests
+      name: Run unit tests
+      script: flutter test
+
+  email: &email
+    email:
+      recipients:
+        - mahmoud.essam6795@gmail.com
+      notify:
+        success: true
+        failure: true
+
+workflows:
+  android-build:
+    name: Android build
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    environment:
+      <<: *env_versions
+      # To sign releases with your own upload key (needed for Google Play):
+      # 1. In Codemagic go to Team settings > Code signing identities >
+      #    Android keystores, upload your keystore and name its reference
+      #    "upload_keystore".
+      # 2. Uncomment the two lines below.
+      # 3. Point the release signingConfig in android/app/build.gradle.kts at
+      #    the CM_KEYSTORE_PATH / CM_KEYSTORE_PASSWORD / CM_KEY_ALIAS /
+      #    CM_KEY_PASSWORD environment variables.
+      # android_signing:
+      #   - upload_keystore
+    triggering:
+      events:
+        - push
+        - pull_request
+      branch_patterns:
+        - pattern: main
+          include: true
+          source: true
+      cancel_previous_builds: true
+    cache:
+      cache_paths:
+        - $HOME/.gradle/caches
+        - $FLUTTER_ROOT/.pub-cache
+    scripts:
+      - *get_packages
+      - *analyze
+      - *tests
+      - name: Build release APK
+        script: flutter build apk --release --build-number=$BUILD_NUMBER
+      - name: Build release App Bundle
+        script: flutter build appbundle --release --build-number=$BUILD_NUMBER
+    artifacts:
+      - build/app/outputs/flutter-apk/*.apk
+      - build/app/outputs/bundle/release/*.aab
+      - build/app/outputs/mapping/release/mapping.txt
+    publishing:
+      <<: *email
+
+  ios-build:
+    name: iOS build (unsigned)
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    environment:
+      <<: *env_versions
+    cache:
+      cache_paths:
+        - $HOME/Library/Caches/CocoaPods
+        - $FLUTTER_ROOT/.pub-cache
+    scripts:
+      - *get_packages
+      - *tests
+      # flutter build installs the CocoaPods dependencies itself.
+      - name: Build iOS app (no code signing)
+        script: flutter build ios --release --no-codesign --build-number=$BUILD_NUMBER
+      - name: Package Runner.app
+        script: |
+          cd build/ios/iphoneos
+          zip -r "$CM_BUILD_DIR/Runner-unsigned.zip" Runner.app
+    artifacts:
+      - Runner-unsigned.zip
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      <<: *email
+
+# Signed iOS builds (TestFlight / App Store), when you have an Apple
+# Developer account:
+#   1. Register the iOS app in Firebase (bundle ID
+#      com.mahmoudessam.homemanagement) and add ios/Runner/GoogleService-Info.plist.
+#   2. In Codemagic, add an App Store Connect API key under
+#      Team settings > Integrations > Developer Portal.
+#   3. In ios-build, add to environment:
+#        ios_signing:
+#          distribution_type: app_store
+#          bundle_identifier: com.mahmoudessam.homemanagement
+#      add a script "xcode-project use-profiles" before the build, replace
+#      the build step with "flutter build ipa --release
+#      --export-options-plist=/Users/builder/export_options.plist",
+#      collect build/ios/ipa/*.ipa, and add an app_store_connect publishing
+#      section with "auth: integration" and "submit_to_testflight: true".
