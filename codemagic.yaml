@@ -96,6 +96,10 @@ workflows:
         - $HOME/Library/Caches/CocoaPods
         - $FLUTTER_ROOT/.pub-cache
     scripts:
+      - name: Use CocoaPods for iOS plugins
+        # Swift Package Manager can't resolve Firebase 13 + Google Sign-In 9
+        # together (gtm-session-fetcher conflict); CocoaPods can.
+        script: flutter config --no-enable-swift-package-manager
       - *get_packages
       - *tests
       # flutter build installs the CocoaPods dependencies itself.
