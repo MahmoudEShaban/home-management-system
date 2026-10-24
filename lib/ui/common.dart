@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:async';
+
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 
+import '../data/google_auth.dart';
 import '../data/models.dart';
 import '../data/providers.dart';
 import '../l10n/strings.dart';
@@ -325,3 +329,129 @@ Future<T?> push<T>(BuildContext context, Widget page) =>
 const gap8 = SizedBox(height: 8, width: 8);
 const gap12 = SizedBox(height: 12, width: 12);
 const gap16 = SizedBox(height: 16, width: 16);
+
+// ─────────────────────────────── Loading ───────────────────────────────
+
+/// Spinner that, if loading takes too long, explains what to do and offers
+/// Try again / Sign out instead of spinning forever. [step] names what is
+/// loading, which helps when reporting a problem.
+class PatientLoader extends StatefulWidget {
+  const PatientLoader({super.key, required this.step, this.onRetry, this.fullScreen = true});
+  final String step;
+  final VoidCallback? onRetry;
+  final bool fullScreen;
+
+  @override
+  State<PatientLoader> createState() => _PatientLoaderState();
+}
+
+class _PatientLoaderState extends State<PatientLoader> {
+  Timer? _timer;
+  bool _slow = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer(const Duration(seconds: 12), () {
+      if (mounted) setState(() => _slow = true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _signOut() async {
+    try {
+      await GoogleAuth.signOut();
+    } catch (_) {
+      // Not signed in with Google.
+    }
+    await FirebaseAuth.instance.signOut();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.t;
+    final cs = Theme.of(context).colorScheme;
+    final body = Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const CircularProgressIndicator(),
+          if (_slow) ...[
+            const SizedBox(height: 24),
+            Text(t.stillLoading,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 8),
+            Text(t.stillLoadingHint, textAlign: TextAlign.center, style: TextStyle(color: cs.onSurfaceVariant)),
+            const SizedBox(height: 4),
+            Text('(${widget.step})', style: TextStyle(color: cs.outline, fontSize: 11)),
+            const SizedBox(height: 16),
+            Wrap(spacing: 12, alignment: WrapAlignment.center, children: [
+              if (widget.onRetry != null)
+                FilledButton.icon(
+                  onPressed: () {
+                    setState(() => _slow = false);
+                    _timer?.cancel();
+                    _timer = Timer(const Duration(seconds: 12), () {
+                      if (mounted) setState(() => _slow = true);
+                    });
+                    widget.onRetry!();
+                  },
+                  icon: const Icon(Icons.refresh),
+                  label: Text(t.retry),
+                ),
+              OutlinedButton.icon(onPressed: _signOut, icon: const Icon(Icons.logout), label: Text(t.signOut)),
+            ]),
+          ],
+        ]),
+      ),
+    );
+    return widget.fullScreen ? Scaffold(body: SafeArea(child: body)) : body;
+  }
+}
+
+/// Full-page error with Sign out, used instead of a bare error string.
+class ErrorScreen extends StatelessWidget {
+  const ErrorScreen({super.key, required this.error, this.onRetry});
+  final Object error;
+  final VoidCallback? onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.t;
+    return Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.error_outline, size: 48, color: Theme.of(context).colorScheme.error),
+              const SizedBox(height: 12),
+              Text('$error', textAlign: TextAlign.center),
+              const SizedBox(height: 16),
+              Wrap(spacing: 12, alignment: WrapAlignment.center, children: [
+                if (onRetry != null)
+                  FilledButton.icon(onPressed: onRetry, icon: const Icon(Icons.refresh), label: Text(t.retry)),
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    try {
+                      await GoogleAuth.signOut();
+                    } catch (_) {}
+                    await FirebaseAuth.instance.signOut();
+                  },
+                  icon: const Icon(Icons.logout),
+                  label: Text(t.signOut),
+                ),
+              ]),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+}

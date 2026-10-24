@@ -28,8 +28,8 @@ class ResidentGate extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final request = ref.watch(myRequestProvider);
     return request.when(
-      loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
-      error: (e, _) => Scaffold(body: Center(child: Text('$e'))),
+      loading: () => PatientLoader(step: 'join request', onRetry: () => ref.invalidate(myRequestProvider)),
+      error: (e, _) => ErrorScreen(error: e, onRetry: () => ref.invalidate(myRequestProvider)),
       data: (r) {
         if (r == null) return const JoinBuildingScreen();
         if (r.status == RequestStatus.approved) return const ResidentHome();
@@ -347,7 +347,8 @@ class _DuesTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.t;
     final cs = Theme.of(context).colorScheme;
-    final unit = ref.watch(residentUnitProvider).value;
+    final unitAsync = ref.watch(residentUnitProvider);
+    final unit = unitAsync.value;
     final property = ref.watch(residentPropertyProvider).value;
     final month = ref.watch(selectedMonthProvider);
     final expenses = ref.watch(residentExpensesProvider).value ?? const <Expense>[];
@@ -356,7 +357,29 @@ class _DuesTab extends ConsumerWidget {
     String m(double v) => _money(ref, context, v);
 
     if (unit == null) {
-      return const Center(child: CircularProgressIndicator());
+      if (unitAsync.isLoading) {
+        return PatientLoader(
+            step: 'flat', fullScreen: false, onRetry: () => ref.invalidate(residentUnitProvider));
+      }
+      // The flat was deleted, or can't be read: say so instead of spinning.
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Icon(Icons.door_front_door_outlined, size: 48, color: cs.outline),
+            const SizedBox(height: 12),
+            Text(t.flatNotFound,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 8),
+            Text(t.flatNotFoundHint, textAlign: TextAlign.center, style: TextStyle(color: cs.onSurfaceVariant)),
+            if (unitAsync.hasError) ...[
+              const SizedBox(height: 8),
+              Text('${unitAsync.error}', textAlign: TextAlign.center, style: TextStyle(color: cs.error, fontSize: 12)),
+            ],
+          ]),
+        ),
+      );
     }
     final status = monthStatuses(
             propertyId: unit.propertyId, month: month, units: [unit], expenses: expenses, payments: payments)
@@ -628,7 +651,8 @@ class _InvoicesTab extends ConsumerWidget {
     final membership = ref.watch(membershipProvider);
     final profile = ref.watch(residentProfileProvider).value ?? const BusinessProfile();
     final property = ref.watch(residentPropertyProvider).value;
-    final unit = ref.watch(residentUnitProvider).value;
+    final unitAsync = ref.watch(residentUnitProvider);
+    final unit = unitAsync.value;
 
     if (list.isEmpty) {
       return EmptyState(icon: Icons.receipt_long_outlined, message: t.noInvoices);

@@ -397,6 +397,15 @@ class L10n {
   String get introBody4 => _tr(
       'New expenses, approvals and your messages arrive as notifications, and your data is backed up to Google Drive.',
       'تصل المصروفات الجديدة والموافقات ورسائلك كإشعارات، وتُحفظ بياناتك احتياطيًا على Google Drive.');
+  String get stillLoading => _tr('This is taking longer than usual', 'التحميل يستغرق وقتاً أطول من المعتاد');
+  String get stillLoadingHint => _tr(
+      'Check your internet connection, then try again. If it keeps happening, sign out and sign in again.',
+      'تأكد من اتصالك بالإنترنت ثم حاول مرة أخرى. إذا تكرر ذلك، سجّل الخروج ثم سجّل الدخول من جديد.');
+  String get retry => _tr('Try again', 'حاول مرة أخرى');
+  String get flatNotFound => _tr('Your flat could not be found', 'تعذر العثور على شقتك');
+  String get flatNotFoundHint => _tr(
+      'It may have been removed or renamed. Ask your building manager to check your link, or send a new join request.',
+      'ربما تم حذفها أو تغيير اسمها. اطلب من مدير العقار مراجعة الربط، أو أرسل طلب انضمام جديد.');
   String get developedBy => _tr('Developed by Mahmoud Essam', 'تم التطوير بواسطة محمود عصام');
   String get about => _tr('About', 'حول التطبيق');
   String get showIntroAgain => _tr('Show the introduction again', 'عرض المقدمة مرة أخرى');

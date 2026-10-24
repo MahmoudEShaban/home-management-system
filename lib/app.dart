@@ -58,16 +58,16 @@ class AuthGate extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authStateProvider);
     return auth.when(
-      loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
-      error: (e, _) => Scaffold(body: Center(child: Text('$e'))),
+      loading: () => const PatientLoader(step: 'auth'),
+      error: (e, _) => ErrorScreen(error: e),
       data: (user) {
         if (user == null) return const AuthScreen();
         // Show new inbox items as phone notifications while signed in.
         ref.watch(localAlertsProvider);
         final role = ref.watch(roleProvider);
         return role.when(
-          loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
-          error: (e, _) => Scaffold(body: Center(child: Text('$e'))),
+          loading: () => PatientLoader(step: 'role', onRetry: () => ref.invalidate(roleProvider)),
+          error: (e, _) => ErrorScreen(error: e, onRetry: () => ref.invalidate(roleProvider)),
           // Keyed by uid so all per-user state resets when the account changes.
           data: (r) {
             final view = r == kRoleBoth ? ref.watch(activeViewProvider) : r;
