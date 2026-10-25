@@ -14,6 +14,7 @@ const kCollections = [
   'expenses',
   'invoices',
   'duesPayments',
+  'flatExpenses',
 ];
 
 /// Thin wrapper over one Firestore collection that belongs to the signed-in user.

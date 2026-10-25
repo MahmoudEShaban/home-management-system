@@ -60,6 +60,21 @@ service cloud.firestore {
         allow read: if isMember(managerId)
           && resource.data.unitId == member(managerId).unitId;
       }
+      // Private flat expenses: only residents linked to that flat can read
+      // and write them (the manager sees them through the owner rule above).
+      match /flatExpenses/{expenseId} {
+        allow read, delete: if isMember(managerId)
+          && resource.data.unitId == member(managerId).unitId;
+        allow create: if isMember(managerId)
+          && request.resource.data.unitId == member(managerId).unitId
+          && request.resource.data.propertyId == member(managerId).propertyId
+          && request.resource.data.addedByUid == request.auth.uid;
+        allow update: if isMember(managerId)
+          && resource.data.unitId == member(managerId).unitId
+          && request.resource.data.unitId == resource.data.unitId
+          && request.resource.data.propertyId == resource.data.propertyId
+          && request.resource.data.addedByUid == resource.data.addedByUid;
+      }
       // Dues payments: residents see their building's payments (for the
       // overview) and can mark their own flat as paid. Only the manager can
       // confirm or reject.

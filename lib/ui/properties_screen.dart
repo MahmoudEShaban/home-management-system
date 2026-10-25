@@ -8,6 +8,7 @@ import '../l10n/strings.dart';
 import '../data/community.dart';
 import 'common.dart';
 import 'community_screens.dart';
+import 'flat_expenses_screen.dart' show FlatExpensesPanel;
 import 'dues_screen.dart';
 
 Color unitStatusColor(UnitStatus s) => switch (s) {
@@ -474,6 +475,7 @@ class UnitDetailScreen extends ConsumerWidget {
             onSelectionChanged: (s) => ref.read(unitRepo).save(withStatus(unit, s.first, property)),
           ),
           LinkedResidentPanel(unitId: unit.id),
+          FlatExpensesPanel(unitId: unit.id),
           SectionTitle(t.duesThisMonth,
               trailing: Text(context.fmtMonth(month), style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12))),
           Panel(

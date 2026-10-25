@@ -19,6 +19,7 @@ import 'invoices_screen.dart' show PdfPreviewScreen;
 import 'properties_screen.dart' show compareFloors;
 import 'settings_screen.dart' show LanguageMenuButton;
 import 'dues_screen.dart' show dueStateColor;
+import 'flat_expenses_screen.dart';
 import 'overview_section.dart';
 import 'split_editor.dart';
 
@@ -323,7 +324,8 @@ class _ResidentHomeState extends ConsumerState<ResidentHome> {
         ]),
         actions: _residentActions(context, ref),
       ),
-      body: IndexedStack(index: _index, children: const [_DuesTab(), _ExpensesTab(), _InvoicesTab()]),
+      body: IndexedStack(
+          index: _index, children: const [_DuesTab(), _ExpensesTab(), FlatExpensesTab(), _InvoicesTab()]),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: (i) => setState(() => _index = i),
@@ -334,6 +336,10 @@ class _ResidentHomeState extends ConsumerState<ResidentHome> {
               label: t.myDues),
           NavigationDestination(
               icon: const Icon(Icons.bolt_outlined), selectedIcon: const Icon(Icons.bolt), label: t.buildingExpenses),
+          NavigationDestination(
+              icon: const Icon(Icons.home_repair_service_outlined),
+              selectedIcon: const Icon(Icons.home_repair_service),
+              label: t.flatExpensesTab),
           NavigationDestination(
               icon: const Icon(Icons.receipt_long_outlined),
               selectedIcon: const Icon(Icons.receipt_long),

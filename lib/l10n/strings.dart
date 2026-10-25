@@ -415,6 +415,22 @@ class L10n {
       'Fixed monthly cost: $occupied when occupied, $closed when not occupied.',
       'التكلفة الشهرية الثابتة: $occupied عند السكن، و$closed عند عدم الإشغال.');
   String get flatStatusSaved => _tr('Flat status updated', 'تم تحديث حالة الشقة');
+  // Private flat expenses
+  String get flatExpensesTab => _tr('Flat expenses', 'مصروفات الشقة');
+  String get flatExpenses => _tr('Flat\'s own expenses', 'مصروفات الشقة الخاصة');
+  String get addFlatExpense => _tr('Add flat expense', 'إضافة مصروف للشقة');
+  String get editFlatExpense => _tr('Flat expense', 'مصروف الشقة');
+  String get flatExpensesPrivacy => _tr(
+      'Private: only residents of this flat and your building manager can see these. They are not shared with other flats.',
+      'خاص: لا يراها إلا سكان هذه الشقة ومدير العقار، ولا تُقسَّم على الشقق الأخرى.');
+  String get flatExpensesManagerHint => _tr(
+      'Recorded by the flat\'s residents for their own flat. Not part of the building\'s expenses or dues.',
+      'سجّلها سكان الشقة لشقتهم فقط، وليست ضمن مصروفات العقار أو المستحقات.');
+  String get noFlatExpenses => _tr('No flat expenses this month', 'لا توجد مصروفات للشقة هذا الشهر');
+  String get flatExpenseTitle => _tr('What was it for?', 'ما هو المصروف؟');
+  String get flatExpenseTitleHint => _tr('e.g. Kitchen tap repair', 'مثال: إصلاح حنفية المطبخ');
+  String get flatExpenseSaved => _tr('Flat expense saved', 'تم حفظ مصروف الشقة');
+  String addedByLine(String name) => _tr('Added by $name', 'أضافه $name');
   String get stillLoading => _tr('This is taking longer than usual', 'التحميل يستغرق وقتاً أطول من المعتاد');
   String get stillLoadingHint => _tr(
       'Check your internet connection, then try again. If it keeps happening, sign out and sign in again.',
