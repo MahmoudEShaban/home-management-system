@@ -15,6 +15,10 @@ Future<void> main() async {
   final prefs = await SharedPreferences.getInstance();
 
   runApp(ProviderScope(
+    // Riverpod retries failed providers automatically, which keeps screens
+    // on a spinner while e.g. a Firestore permission error repeats. Show
+    // errors straight away instead; screens offer "Try again".
+    retry: (retryCount, error) => null,
     overrides: [prefsProvider.overrideWithValue(prefs)],
     child: const RentManagerApp(),
   ));
