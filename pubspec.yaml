@@ -44,8 +44,8 @@ dependencies:
 dependency_overrides:
   # shared_preferences_android 2.5.x uses JNI, whose native side doesn't
   # register on this setup ("No instance with no name has been registered"),
-  # so the app crashed at startup. 2.4.29 is the last version before JNI.
-  shared_preferences_android: 2.4.29
+  # so the app crashed at startup. 2.4.28 is the last published version before JNI.
+  shared_preferences_android: 2.4.28
 
 dev_dependencies:
   flutter_test:
