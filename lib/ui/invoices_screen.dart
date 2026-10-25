@@ -30,7 +30,7 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
     final invoices = ref.watch(invoicesProvider);
     final unitById = ref.watch(unitByIdProvider);
     final propById = ref.watch(propertyByIdProvider);
-    final memberByUnit = ref.watch(memberByUnitProvider);
+    final membersByUnit = ref.watch(membersByUnitProvider);
 
     return Scaffold(
       appBar: AppBar(title: Text(t.invoices)),
@@ -74,7 +74,7 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
                       child: Icon(Icons.receipt_long_outlined,
                           color: overdue ? Theme.of(context).colorScheme.error : null),
                     ),
-                    title: Text('${inv.number} · ${memberByUnit[inv.unitId]?.name ?? unitById[inv.unitId]?.name ?? ''}'),
+                    title: Text('${inv.number} · ${memberNames(membersByUnit[inv.unitId]).isNotEmpty ? memberNames(membersByUnit[inv.unitId]) : unitById[inv.unitId]?.name ?? ''}'),
                     subtitle: Text([
                       unitById[inv.unitId]?.name,
                       propById[inv.propertyId]?.name,
@@ -120,7 +120,8 @@ class InvoiceDetailScreen extends ConsumerWidget {
       return Scaffold(appBar: AppBar(), body: EmptyState(icon: Icons.receipt_long, message: t.nothingYet));
     }
     final unit = ref.watch(unitByIdProvider)[inv.unitId];
-    final billTo = ref.watch(memberByUnitProvider)[inv.unitId]?.name ?? unit?.name ?? '';
+    final linkedNames = memberNames(ref.watch(membersByUnitProvider)[inv.unitId]);
+    final billTo = linkedNames.isNotEmpty ? linkedNames : unit?.name ?? '';
     final property = ref.watch(propertyByIdProvider)[inv.propertyId];
     final profile = ref.watch(profileProvider).value ?? const BusinessProfile();
     final arabic = t.ar;
@@ -407,7 +408,7 @@ class _InvoiceFormState extends ConsumerState<InvoiceForm> {
     final t = context.t;
     final cs = Theme.of(context).colorScheme;
     final propById = ref.watch(propertyByIdProvider);
-    final memberByUnit = ref.watch(memberByUnitProvider);
+    final membersByUnit = ref.watch(membersByUnitProvider);
     ref.watch(expensesProvider);
     final units = (ref.watch(unitsProvider).value ?? const <Unit>[]).toList()
       ..sort((a, b) {
@@ -446,7 +447,7 @@ class _InvoiceFormState extends ConsumerState<InvoiceForm> {
                       child: Text(
                         [
                           u.name,
-                          if (memberByUnit[u.id] != null) memberByUnit[u.id]!.name,
+                          if (membersByUnit[u.id] != null) memberNames(membersByUnit[u.id]),
                           propById[u.propertyId]?.name ?? '',
                         ].join(' · '),
                         overflow: TextOverflow.ellipsis,

@@ -201,6 +201,26 @@ Future<void> notifyProposalSubmitted(WidgetRef ref, ExpenseProposal p, {required
 }
 
 /// Manager → resident: their submission was approved or declined.
+/// Resident → manager: the flat's status changed (occupied / closed).
+Future<void> notifyFlatStatusChanged(WidgetRef ref,
+    {required String managerUid,
+    required String residentName,
+    required String unitName,
+    required bool occupied,
+    required bool arabic}) async {
+  final notifier = ref.read(notifierProvider);
+  if (notifier == null) return;
+  await notifier.sendSame([managerUid], InboxItem(
+    title: arabic ? 'تغيرت حالة شقة' : 'Flat status changed',
+    body: arabic
+        ? '$unitName · ${occupied ? 'مشغولة (يسكنها المالك)' : 'مغلقة'} · $residentName'
+        : '$unitName · ${occupied ? 'Occupied' : 'Closed'} · $residentName',
+    type: NoticeType.decision,
+    senderName: residentName,
+    createdAt: DateTime.now(),
+  ));
+}
+
 Future<void> notifyProposalDecision(WidgetRef ref, ExpenseProposal p,
     {required bool approved, String note = '', required String managerName, required bool arabic}) async {
   final notifier = ref.read(notifierProvider);

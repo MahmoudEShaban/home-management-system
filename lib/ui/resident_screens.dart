@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -148,9 +150,10 @@ class _JoinBuildingScreenState extends ConsumerState<JoinBuildingScreen> {
     final t = context.t;
     final cs = Theme.of(context).colorScheme;
     final b = _building;
+    // Several residents can share a flat, so every flat is offered.
     final freeFlats = b == null
         ? const <CodeFlat>[]
-        : (b.flats.where((f) => !b.takenUnitIds.contains(f.id)).toList()
+        : (b.flats.toList()
           ..sort((x, y) {
             final c = compareFloors(x.floor, y.floor);
             return c != 0 ? c : x.name.compareTo(y.name);
@@ -201,7 +204,7 @@ class _JoinBuildingScreenState extends ConsumerState<JoinBuildingScreen> {
               ),
               gap16,
               if (freeFlats.isEmpty)
-                Text(t.noFreeFlats, style: TextStyle(color: cs.error))
+                Text(t.noFlatsInBuilding, style: TextStyle(color: cs.error))
               else
                 DropdownButtonFormField<String>(
                   initialValue: _unitId,
@@ -211,7 +214,14 @@ class _JoinBuildingScreenState extends ConsumerState<JoinBuildingScreen> {
                     for (final f in freeFlats)
                       DropdownMenuItem(
                         value: f.id,
-                        child: Text('${f.name} · ${t.floorLabel(f.floor)}', overflow: TextOverflow.ellipsis),
+                        child: Text(
+                          [
+                            f.name,
+                            t.floorLabel(f.floor),
+                            if (b != null && b.takenUnitIds.contains(f.id)) t.flatHasResidents,
+                          ].join(' · '),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                   ],
                   validator: (v) => v == null ? t.selectYourFlat : null,
@@ -448,6 +458,7 @@ class _DuesTab extends ConsumerWidget {
             style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
           ),
         ],
+        _FlatStatusPanel(unit: unit, property: property),
         SectionTitle(t.quickActions),
         Wrap(spacing: 8, runSpacing: 8, children: [
           ActionChip(
@@ -1048,5 +1059,83 @@ class _MaintenanceRequestScreenState extends ConsumerState<MaintenanceRequestScr
         ),
       ),
     );
+  }
+}
+
+/// Resident chooses whether they live in the flat (occupied) or it's closed.
+/// Any resident linked to the flat can change it; the manager is notified.
+class _FlatStatusPanel extends ConsumerStatefulWidget {
+  const _FlatStatusPanel({required this.unit, required this.property});
+  final Unit unit;
+  final Property? property;
+
+  @override
+  ConsumerState<_FlatStatusPanel> createState() => _FlatStatusPanelState();
+}
+
+class _FlatStatusPanelState extends ConsumerState<_FlatStatusPanel> {
+  bool _busy = false;
+
+  Future<void> _set(UnitStatus status) async {
+    final t = context.t;
+    final m = ref.read(membershipProvider);
+    if (m == null || status == widget.unit.status) return;
+    setState(() => _busy = true);
+    try {
+      await setFlatStatusAsResident(ref.read(firestoreProvider), m, widget.unit, widget.property, status);
+      unawaited(notifyFlatStatusChanged(ref,
+              managerUid: m.managerUid,
+              residentName: m.name,
+              unitName: widget.unit.name,
+              occupied: status == UnitStatus.ownerResident,
+              arabic: t.ar)
+          .catchError((Object e) => debugPrint('Status notice failed: $e')));
+      if (mounted) toast(context, t.flatStatusSaved);
+    } catch (e) {
+      if (mounted) toast(context, '${t.somethingWrong}: $e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.t;
+    final cs = Theme.of(context).colorScheme;
+    // A flat marked "rented" by the manager shows as occupied here.
+    final current = widget.unit.status == UnitStatus.closed ? UnitStatus.closed : UnitStatus.ownerResident;
+    final p = widget.property;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      SectionTitle(t.myFlatStatus),
+      Panel(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          SegmentedButton<UnitStatus>(
+            showSelectedIcon: false,
+            segments: [
+              ButtonSegment(
+                  value: UnitStatus.ownerResident,
+                  icon: const Icon(Icons.home_outlined),
+                  label: Text(t.flatOccupied)),
+              ButtonSegment(
+                  value: UnitStatus.closed, icon: const Icon(Icons.lock_outline), label: Text(t.flatClosed)),
+            ],
+            selected: {current},
+            onSelectionChanged: _busy ? null : (v) => _set(v.first),
+          ),
+          gap8,
+          Text(
+            [
+              t.flatStatusHint,
+              if (p != null && p.feeOccupied != p.feeClosed)
+                t.flatStatusFees(
+                  _money(ref, context, p.feeOccupied),
+                  _money(ref, context, p.feeClosed),
+                ),
+            ].join(' '),
+            style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
+          ),
+        ]),
+      ),
+    ]);
   }
 }

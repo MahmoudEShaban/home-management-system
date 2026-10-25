@@ -30,12 +30,12 @@ class DueStateChip extends StatelessWidget {
 // ─────────────────────────── Manager payment actions ───────────────────────────
 
 Future<void> _notifyResident(WidgetRef ref, String unitId, String title, String body) async {
-  final member = ref.read(memberByUnitProvider)[unitId];
+  final members = ref.read(membersByUnitProvider)[unitId] ?? const <Member>[];
   final notifier = ref.read(notifierProvider);
-  if (member == null || notifier == null) return;
+  if (members.isEmpty || notifier == null) return;
   final profile = ref.read(profileProvider).value ?? const BusinessProfile();
   try {
-    await notifier.sendSame([member.uid], InboxItem(
+    await notifier.sendSame(members.map((m) => m.uid), InboxItem(
       title: title,
       body: body,
       type: NoticeType.decision,
@@ -437,7 +437,7 @@ class LateFlatsScreen extends ConsumerWidget {
     final t = context.t;
     final cs = Theme.of(context).colorScheme;
     final propById = ref.watch(propertyByIdProvider);
-    final memberByUnit = ref.watch(memberByUnitProvider);
+    final membersByUnit = ref.watch(membersByUnitProvider);
     return Scaffold(
       appBar: AppBar(title: Text(t.lateFlats)),
       body: ListView(
@@ -451,7 +451,7 @@ class LateFlatsScreen extends ConsumerWidget {
               child: ListTile(
                 leading: const Icon(Icons.warning_amber_rounded, color: Color(0xFFB26A00)),
                 title: Text(
-                    [l.unit.name, if (memberByUnit[l.unit.id] != null) memberByUnit[l.unit.id]!.name].join(' · ')),
+                    [l.unit.name, memberNames(membersByUnit[l.unit.id])].where((s) => s.isNotEmpty).join(' · ')),
                 subtitle: Text(
                     '${propById[l.unit.propertyId]?.name ?? ''}\n${l.periods.map(context.fmtPeriod).join(', ')}'),
                 isThreeLine: true,

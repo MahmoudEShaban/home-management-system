@@ -424,9 +424,22 @@ final membersProvider = StreamProvider<List<Member>>((ref) {
       .map((s) => s.docs.map((d) => Member.fromMap(d.id, d.data())).toList());
 });
 
-final memberByUnitProvider = Provider<Map<String, Member>>((ref) => {
-      for (final m in ref.watch(membersProvider).value ?? const <Member>[]) m.unitId: m,
-    });
+/// Linked residents of each flat. A flat can have several (owners, family,
+/// co-owners); each of them can manage it.
+final membersByUnitProvider = Provider<Map<String, List<Member>>>((ref) {
+  final map = <String, List<Member>>{};
+  for (final m in ref.watch(membersProvider).value ?? const <Member>[]) {
+    map.putIfAbsent(m.unitId, () => []).add(m);
+  }
+  for (final l in map.values) {
+    l.sort((a, b) => a.joinedAt.compareTo(b.joinedAt));
+  }
+  return map;
+});
+
+/// "Ahmed, Sara" for showing who is linked to a flat.
+String memberNames(List<Member>? members) =>
+    (members ?? const <Member>[]).map((m) => m.name).where((n) => n.isNotEmpty).join(', ');
 
 /// Keeps each building code's flat list and taken flats in step with the
 /// manager's data. Watched by the manager home shell.
@@ -761,6 +774,24 @@ final residentDuesPaymentsProvider = StreamProvider<List<DuesPayment>>((ref) {
       .snapshots()
       .map((s) => s.docs.map((d) => DuesPayment.fromMap(d.id, d.data())).toList());
 });
+
+/// Resident: say whether they live in the flat (occupied) or it is closed.
+/// If the flat's fixed cost was the building's default for the old status,
+/// it moves to the default for the new one (same as when the manager
+/// changes it). Firestore rules only let a linked resident change these
+/// fields of their own flat.
+Future<void> setFlatStatusAsResident(
+    FirebaseFirestore db, JoinRequest m, Unit unit, Property? property, UnitStatus status) {
+  final update = <String, dynamic>{
+    'status': status.name,
+    'statusChangedBy': m.name,
+    'statusChangedAt': DateTime.now(),
+  };
+  if (property != null && unit.monthlyFee == property.defaultFee(unit.status)) {
+    update['monthlyFee'] = property.defaultFee(status);
+  }
+  return db.collection('users').doc(m.managerUid).collection('units').doc(unit.id).update(update);
+}
 
 /// Resident: say "I've paid" for their flat's dues for a month.
 Future<void> claimDuesPayment(FirebaseFirestore db, JoinRequest m, DuesPayment p) => db

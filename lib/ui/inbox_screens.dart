@@ -182,9 +182,9 @@ class _ComposeMessageScreenState extends ConsumerState<ComposeMessageScreen> {
     final t = context.t;
     final cs = Theme.of(context).colorScheme;
     final props = ref.watch(propertiesProvider).value ?? const <Property>[];
-    final memberByUnit = ref.watch(memberByUnitProvider);
+    final membersByUnit = ref.watch(membersByUnitProvider);
     final flats = (ref.watch(unitsProvider).value ?? const <Unit>[])
-        .where((u) => u.propertyId == _propertyId && memberByUnit.containsKey(u.id))
+        .where((u) => u.propertyId == _propertyId && membersByUnit.containsKey(u.id))
         .toList()
       ..sort((a, b) => compareFloors(a.floor, b.floor));
     ref.watch(membersProvider);
@@ -226,7 +226,7 @@ class _ComposeMessageScreenState extends ConsumerState<ComposeMessageScreen> {
                   for (final u in flats)
                     DropdownMenuItem(
                       value: u.id,
-                      child: Text('${u.name} · ${memberByUnit[u.id]?.name ?? ''}', overflow: TextOverflow.ellipsis),
+                      child: Text('${u.name} · ${memberNames(membersByUnit[u.id])}', overflow: TextOverflow.ellipsis),
                     ),
                 ],
                 onChanged: (v) => setState(() => _unitId = v),

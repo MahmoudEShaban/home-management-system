@@ -355,7 +355,7 @@ class _FlatTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.t;
     final color = unitStatusColor(unit.status);
-    final member = ref.watch(memberByUnitProvider)[unit.id];
+    final members = ref.watch(membersByUnitProvider)[unit.id];
     return ListTile(
       leading: CircleAvatar(
         backgroundColor: color.withValues(alpha: 0.12),
@@ -363,7 +363,7 @@ class _FlatTile extends ConsumerWidget {
       ),
       title: Text(unit.name),
       subtitle: Text([
-        if (member != null) t.residentLabel(member.name),
+        if (members != null && members.isNotEmpty) t.residentLabel(memberNames(members)),
         if (unit.monthlyFee > 0) '${money(ref, context, unit.monthlyFee)} ${t.perMonth}',
       ].join(' · ')),
       trailing: PopupMenuButton<UnitStatus>(
@@ -403,7 +403,7 @@ class UnitDetailScreen extends ConsumerWidget {
       return Scaffold(appBar: AppBar(), body: EmptyState(icon: Icons.door_front_door, message: t.nothingYet));
     }
     final property = ref.watch(propertyByIdProvider)[unit.propertyId];
-    final linked = ref.watch(memberByUnitProvider)[unitId];
+    final linked = ref.watch(membersByUnitProvider)[unitId] ?? const <Member>[];
     final month = ref.watch(selectedMonthProvider);
     final due = monthlyDues(
       propertyId: unit.propertyId,
@@ -434,7 +434,7 @@ class UnitDetailScreen extends ConsumerWidget {
             tooltip: t.delete,
             icon: const Icon(Icons.delete_outline),
             onPressed: () async {
-              if (linked != null) {
+              if (linked.isNotEmpty) {
                 toast(context, t.deleteUnitBlocked);
                 return;
               }

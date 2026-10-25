@@ -397,6 +397,24 @@ class L10n {
   String get introBody4 => _tr(
       'New expenses, approvals and your messages arrive as notifications, and your data is backed up to Google Drive.',
       'تصل المصروفات الجديدة والموافقات ورسائلك كإشعارات، وتُحفظ بياناتك احتياطيًا على Google Drive.');
+  // Shared flats and resident-set flat status
+  String residentAccountsCount(int n) => _tr('$n resident accounts', '$n حسابات سكان');
+  String get sharedFlatHint => _tr(
+      'Everyone linked here can see and manage this flat: dues, payments, requests and its status.',
+      'كل المرتبطين هنا يمكنهم متابعة وإدارة الشقة: المستحقات والمدفوعات والطلبات وحالتها.');
+  String get flatHasResidents => _tr('has residents, you will be added', 'بها سكان، ستتم إضافتك');
+  String get noFlatsInBuilding =>
+      _tr('This building has no flats yet. Contact your building manager.', 'لا توجد شقق في هذا العقار بعد. تواصل مع مدير العقار.');
+  String get myFlatStatus => _tr('My flat', 'شقتي');
+  String get flatOccupied => _tr('Living here', 'نسكن بها');
+  String get flatClosed => _tr('Not occupied', 'غير مشغولة');
+  String get flatStatusHint => _tr(
+      'Choose whether someone lives in the flat. Your building manager is notified.',
+      'اختر إن كان أحد يسكن الشقة. سيتم إبلاغ مدير العقار.');
+  String flatStatusFees(String occupied, String closed) => _tr(
+      'Fixed monthly cost: $occupied when occupied, $closed when not occupied.',
+      'التكلفة الشهرية الثابتة: $occupied عند السكن، و$closed عند عدم الإشغال.');
+  String get flatStatusSaved => _tr('Flat status updated', 'تم تحديث حالة الشقة');
   String get stillLoading => _tr('This is taking longer than usual', 'التحميل يستغرق وقتاً أطول من المعتاد');
   String get stillLoadingHint => _tr(
       'Check your internet connection, then try again. If it keeps happening, sign out and sign in again.',

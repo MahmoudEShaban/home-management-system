@@ -36,7 +36,7 @@ class _ResidentAccessPanelState extends ConsumerState<ResidentAccessPanel> {
             managerUid: uid,
             property: widget.property,
             units: ref.read(unitsProvider).value ?? const [],
-            takenUnitIds: ref.read(memberByUnitProvider).keys.toSet(),
+            takenUnitIds: ref.read(membersByUnitProvider).keys.toSet(),
           );
     } catch (e) {
       if (mounted) toast(context, '${context.t.somethingWrong}: $e');
@@ -164,11 +164,6 @@ class JoinRequestsScreen extends ConsumerWidget {
 
   Future<void> _approve(BuildContext context, WidgetRef ref, JoinRequest r) async {
     final t = context.t;
-    final existing = ref.read(memberByUnitProvider)[r.unitId];
-    if (existing != null && existing.uid != r.residentUid) {
-      toast(context, t.flatAlreadyLinked(existing.name));
-      return;
-    }
     try {
       await ref.read(communityProvider).approve(r);
       if (context.mounted) toast(context, t.requestApproved);
@@ -274,33 +269,41 @@ class LinkedResidentPanel extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = context.t;
     final cs = Theme.of(context).colorScheme;
-    final member = ref.watch(memberByUnitProvider)[unitId];
+    final members = ref.watch(membersByUnitProvider)[unitId] ?? const <Member>[];
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      SectionTitle(t.residentAccount),
+      SectionTitle(members.length > 1 ? t.residentAccountsCount(members.length) : t.residentAccount),
       Panel(
         padding: EdgeInsets.zero,
-        child: member == null
+        child: members.isEmpty
             ? ListTile(
                 leading: Icon(Icons.person_off_outlined, color: cs.outline),
                 title: Text(t.noResidentAccount),
                 subtitle: Text(t.noResidentAccountHint),
               )
-            : ListTile(
-                leading: const CircleAvatar(child: Icon(Icons.verified_user_outlined)),
-                title: Text(member.name),
-                subtitle: Text([member.email, member.phone].where((s) => s.isNotEmpty).join(' · ')),
-                trailing: PopupMenuButton<String>(
-                  onSelected: (v) async {
-                    final uid = ref.read(uidProvider);
-                    if (v == 'remove' &&
-                        uid != null &&
-                        await confirmDialog(context, t.unlinkConfirm(member.name), confirmLabel: t.unlink)) {
-                      await ref.read(communityProvider).removeMember(uid, member);
-                    }
-                  },
-                  itemBuilder: (_) => [PopupMenuItem(value: 'remove', child: Text(t.unlink))],
-                ),
-              ),
+            : Column(children: [
+                for (final member in members)
+                  ListTile(
+                    leading: const CircleAvatar(child: Icon(Icons.verified_user_outlined)),
+                    title: Text(member.name),
+                    subtitle: Text([member.email, member.phone].where((s) => s.isNotEmpty).join(' · ')),
+                    trailing: PopupMenuButton<String>(
+                      onSelected: (v) async {
+                        final uid = ref.read(uidProvider);
+                        if (v == 'remove' &&
+                            uid != null &&
+                            await confirmDialog(context, t.unlinkConfirm(member.name), confirmLabel: t.unlink)) {
+                          await ref.read(communityProvider).removeMember(uid, member);
+                        }
+                      },
+                      itemBuilder: (_) => [PopupMenuItem(value: 'remove', child: Text(t.unlink))],
+                    ),
+                  ),
+                if (members.length > 1)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                    child: Text(t.sharedFlatHint, style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12)),
+                  ),
+              ]),
       ),
     ]);
   }
