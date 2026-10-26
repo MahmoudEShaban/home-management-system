@@ -8,6 +8,7 @@ import '../data/notifications.dart';
 import '../data/models.dart';
 import '../data/providers.dart';
 import '../l10n/strings.dart';
+import 'attachments_widgets.dart';
 import 'common.dart';
 import 'expenses_screen.dart' show ExpenseForm;
 import 'split_editor.dart';
@@ -495,6 +496,10 @@ class ExpenseApprovalsScreen extends ConsumerWidget {
                 if (p.notes.isNotEmpty) ...[
                   gap8,
                   Text('“${p.notes}”'),
+                ],
+                if (p.attachmentIds.isNotEmpty) ...[
+                  gap8,
+                  AttachmentStrip(managerUid: p.managerUid, ids: p.attachmentIds, size: 64),
                 ],
                 gap8,
                 if (!p.isMaintenance)

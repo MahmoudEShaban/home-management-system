@@ -455,6 +455,9 @@ class Expense implements Entity {
   final String proposedByName;
   final String proposalId;
 
+  /// Photos (receipts, bills) — ids in users/{manager}/attachments.
+  final List<String> attachmentIds;
+
   Expense({
     this.id = '',
     required this.propertyId,
@@ -470,6 +473,7 @@ class Expense implements Entity {
     this.shares = const [],
     this.proposedByName = '',
     this.proposalId = '',
+    this.attachmentIds = const [],
   });
 
   bool get isSplit => split != SplitMethod.none && shares.isNotEmpty;
@@ -496,6 +500,7 @@ class Expense implements Entity {
             .toList(),
         proposedByName: _s(m['proposedByName']),
         proposalId: _s(m['proposalId']),
+        attachmentIds: (m['attachmentIds'] as List? ?? const []).map((e) => '$e').toList(),
       );
 
   @override
@@ -513,6 +518,7 @@ class Expense implements Entity {
         'shares': shares.map((e) => e.toMap()).toList(),
         if (proposedByName.isNotEmpty) 'proposedByName': proposedByName,
         if (proposalId.isNotEmpty) 'proposalId': proposalId,
+        'attachmentIds': attachmentIds,
       };
 }
 
@@ -690,6 +696,9 @@ class DuesPayment implements Entity {
   final DateTime paidAt;
   final DateTime? confirmedAt;
 
+  /// Proof of payment (photo of a receipt or transfer).
+  final List<String> attachmentIds;
+
   DuesPayment({
     String? id,
     required this.propertyId,
@@ -703,6 +712,7 @@ class DuesPayment implements Entity {
     this.paidByUid = '',
     DateTime? paidAt,
     this.confirmedAt,
+    this.attachmentIds = const [],
   })  : id = id ?? docId(unitId, period),
         paidAt = paidAt ?? DateTime.now();
 
@@ -723,6 +733,7 @@ class DuesPayment implements Entity {
         paidByUid: _s(m['paidByUid']),
         paidAt: _dt(m['paidAt']),
         confirmedAt: _dtn(m['confirmedAt']),
+        attachmentIds: (m['attachmentIds'] as List? ?? const []).map((e) => '$e').toList(),
       );
 
   @override
@@ -738,6 +749,7 @@ class DuesPayment implements Entity {
         'paidByUid': paidByUid,
         'paidAt': paidAt.millisecondsSinceEpoch,
         'confirmedAt': confirmedAt?.millisecondsSinceEpoch,
+        'attachmentIds': attachmentIds,
       };
 
   DuesPayment copyWith({DuesPaymentStatus? status, DateTime? confirmedAt, String? note}) => DuesPayment(
@@ -753,5 +765,6 @@ class DuesPayment implements Entity {
         paidByUid: paidByUid,
         paidAt: paidAt,
         confirmedAt: confirmedAt ?? this.confirmedAt,
+        attachmentIds: attachmentIds,
       );
 }

@@ -597,6 +597,9 @@ class ExpenseProposal {
   final String expenseId;
   final DateTime createdAt;
 
+  /// Photos the resident attached (receipt, the problem, …).
+  final List<String> attachmentIds;
+
   const ExpenseProposal({
     this.id = '',
     this.kind = ProposalKind.expense,
@@ -620,6 +623,7 @@ class ExpenseProposal {
     this.decisionNote = '',
     this.expenseId = '',
     required this.createdAt,
+    this.attachmentIds = const [],
   });
 
   factory ExpenseProposal.fromMap(String id, Map<String, dynamic> m) {
@@ -650,6 +654,7 @@ class ExpenseProposal {
       decisionNote: _s(m['decisionNote']),
       expenseId: _s(m['expenseId']),
       createdAt: _dt(m['createdAt']),
+      attachmentIds: (m['attachmentIds'] as List? ?? const []).map((e) => '$e').toList(),
     );
   }
 
@@ -677,6 +682,7 @@ class ExpenseProposal {
         'decisionNote': decisionNote,
         'expenseId': expenseId,
         'createdAt': createdAt.millisecondsSinceEpoch,
+        'attachmentIds': attachmentIds,
       };
 
   /// The building expense this proposal becomes once approved.
@@ -692,6 +698,8 @@ class ExpenseProposal {
         shares: shares,
         proposedByName: residentName,
         proposalId: id,
+        // The resident's photos stay with the approved expense.
+        attachmentIds: attachmentIds,
       );
 }
 

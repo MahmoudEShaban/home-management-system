@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../data/attachments.dart';
 import '../data/community.dart';
 import '../data/flat_expenses.dart';
 import '../data/models.dart';
 import '../data/providers.dart';
 import '../l10n/strings.dart';
+import 'attachments_widgets.dart';
 import 'common.dart';
+import 'resident_screens.dart' show residentPhotoController;
 
 // Private flat expenses: residents of a flat record costs for their own flat.
 // Only residents linked to that flat, and the building manager, can see them.
@@ -81,7 +84,14 @@ class FlatExpensesTab extends ConsumerWidget {
                     if (e.addedByName.isNotEmpty) e.addedByName,
                     if (e.notes.isNotEmpty) e.notes,
                   ].join(' · ')),
-                  trailing: Text(m(e.amount), style: const TextStyle(fontWeight: FontWeight.w600)),
+                  trailing: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(m(e.amount), style: const TextStyle(fontWeight: FontWeight.w600)),
+                      AttachmentBadge(count: e.attachmentIds.length),
+                    ],
+                  ),
                   onTap: () => pushForm(context, FlatExpenseForm(existing: e)),
                 ),
             ]),
@@ -135,9 +145,21 @@ class _FlatExpenseFormState extends ConsumerState<FlatExpenseForm> {
   late final _notes = TextEditingController(text: widget.existing?.notes ?? '');
   late DateTime _date = widget.existing?.date ?? DateTime.now();
   bool _busy = false;
+  late final AttachmentService _attachments;
+  late final AttachmentController _photos;
+
+  @override
+  void initState() {
+    super.initState();
+    _attachments = ref.read(attachmentServiceProvider);
+    // Private to the flat, like the expense itself.
+    _photos = residentPhotoController(ref, AttachmentScope.flat, initial: widget.existing?.attachmentIds ?? const []);
+  }
 
   @override
   void dispose() {
+    _photos.discard(_attachments);
+    _photos.dispose();
     _title.dispose();
     _amount.dispose();
     _notes.dispose();
@@ -164,6 +186,7 @@ class _FlatExpenseFormState extends ConsumerState<FlatExpenseForm> {
       addedByUid: old?.addedByUid ?? m.residentUid,
       addedByName: old?.addedByName ?? m.name,
       createdAt: old?.createdAt ?? DateTime.now(),
+      attachmentIds: _photos.commit(_attachments),
     );
     setState(() => _busy = true);
     // Like other writes in the app, don't wait for the server: Firestore
@@ -185,6 +208,9 @@ class _FlatExpenseFormState extends ConsumerState<FlatExpenseForm> {
     service.delete(e.id).catchError((Object err) {
       debugPrint('Flat expense delete failed: $err');
     });
+    for (final id in e.attachmentIds) {
+      _attachments.delete(_photos.managerUid, id).catchError((Object err) => debugPrint('$err'));
+    }
     if (mounted) Navigator.pop(context);
   }
 
@@ -256,6 +282,8 @@ class _FlatExpenseFormState extends ConsumerState<FlatExpenseForm> {
               minLines: 1,
               decoration: InputDecoration(labelText: t.notes),
             ),
+            gap16,
+            AttachmentPicker(controller: _photos, label: t.receiptPhotos),
             if (editing && widget.existing!.addedByName.isNotEmpty) ...[
               gap16,
               Text(t.addedByLine(widget.existing!.addedByName),
@@ -309,7 +337,17 @@ class FlatExpensesPanel extends ConsumerWidget {
                   if (e.addedByName.isNotEmpty) e.addedByName,
                   if (e.notes.isNotEmpty) e.notes,
                 ].join(' · ')),
-                trailing: Text(m(e.amount), style: const TextStyle(fontWeight: FontWeight.w600)),
+                trailing: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(m(e.amount), style: const TextStyle(fontWeight: FontWeight.w600)),
+                    AttachmentBadge(count: e.attachmentIds.length),
+                  ],
+                ),
+                onTap: e.attachmentIds.isEmpty
+                    ? null
+                    : () => openAttachmentViewer(context, ref.read(uidProvider) ?? '', e.attachmentIds),
               ),
           ]),
         ),

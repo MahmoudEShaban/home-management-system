@@ -451,6 +451,15 @@ class L10n {
   String get phoneResetHint => _tr(
       'Phone accounts can\'t reset the password by email. Ask your building manager for help, or sign in with Google.',
       'لا يمكن إعادة تعيين كلمة مرور حسابات الهاتف عبر البريد. اطلب المساعدة من مدير العقار أو سجّل الدخول بجوجل.');
+  // Photo attachments
+  String get photos => _tr('Photos', 'الصور');
+  String get receiptPhotos => _tr('Photos of receipts or bills', 'صور الإيصالات أو الفواتير');
+  String get problemPhotos => _tr('Photos of the problem', 'صور المشكلة');
+  String get paymentProof => _tr('Proof of payment (receipt or transfer screenshot)', 'إثبات الدفع (إيصال أو لقطة شاشة للتحويل)');
+  String get addPhoto => _tr('Add photo', 'إضافة صورة');
+  String get takePhoto => _tr('Take a photo', 'التقاط صورة');
+  String get chooseFromGallery => _tr('Choose from gallery', 'اختيار من المعرض');
+  String get photoUnreadable => _tr('This photo couldn\'t be read. Try another one.', 'تعذرت قراءة هذه الصورة. جرّب صورة أخرى.');
   String get stillLoading => _tr('This is taking longer than usual', 'التحميل يستغرق وقتاً أطول من المعتاد');
   String get stillLoadingHint => _tr(
       'Check your internet connection, then try again. If it keeps happening, sign out and sign in again.',

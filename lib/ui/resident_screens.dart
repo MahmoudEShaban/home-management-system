@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../data/attachments.dart';
 import '../data/community.dart';
 import '../data/google_auth.dart';
 import '../data/models.dart';
@@ -13,6 +14,7 @@ import '../data/phone_account.dart';
 import '../data/providers.dart';
 import '../data/rent_logic.dart';
 import '../l10n/strings.dart';
+import 'attachments_widgets.dart';
 import 'common.dart';
 import 'invoice_pdf.dart';
 import 'inbox_screens.dart';
@@ -489,6 +491,10 @@ class _DuesTab extends ConsumerWidget {
             ].join(' · '),
             style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
           ),
+          if (p.attachmentIds.isNotEmpty) ...[
+            gap8,
+            AttachmentStrip(managerUid: ref.read(membershipProvider)?.managerUid ?? '', ids: p.attachmentIds),
+          ],
         ],
         _FlatStatusPanel(unit: unit, property: property),
         SectionTitle(t.quickActions),
@@ -529,6 +535,21 @@ class _DuesTab extends ConsumerWidget {
 }
 
 /// Resident tells the manager they paid this month's dues.
+/// Photo controller for a resident's form. Photos are filed under their
+/// building manager's account, tagged with the resident's building and flat.
+AttachmentController residentPhotoController(WidgetRef ref, AttachmentScope scope,
+    {List<String> initial = const []}) {
+  final m = ref.read(membershipProvider);
+  return AttachmentController(
+    managerUid: m?.managerUid ?? '',
+    propertyId: m?.propertyId ?? '',
+    unitId: m?.unitId ?? '',
+    scope: scope,
+    uploaderUid: m?.residentUid ?? '',
+    initial: initial,
+  );
+}
+
 Future<void> _claimPaymentSheet(BuildContext context, WidgetRef ref, FlatMonthStatus status) async {
   final t = context.t;
   final membership = ref.read(membershipProvider);
@@ -537,6 +558,9 @@ Future<void> _claimPaymentSheet(BuildContext context, WidgetRef ref, FlatMonthSt
   final amount = TextEditingController(text: numText(status.outstanding > 0 ? status.outstanding : status.due.total));
   final note = TextEditingController();
   var method = PaymentMethod.cash;
+  final attachments = ref.read(attachmentServiceProvider);
+  // Proof of payment is private to the flat (and the manager).
+  final photos = residentPhotoController(ref, AttachmentScope.flat);
   final ok = await showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
@@ -569,6 +593,8 @@ Future<void> _claimPaymentSheet(BuildContext context, WidgetRef ref, FlatMonthSt
             decoration: InputDecoration(labelText: t.notes, hintText: t.paymentNoteHint),
           ),
           gap16,
+          AttachmentPicker(controller: photos, label: t.paymentProof),
+          gap16,
           FilledButton(
             onPressed: () => Navigator.pop(c, true),
             style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(50)),
@@ -583,8 +609,12 @@ Future<void> _claimPaymentSheet(BuildContext context, WidgetRef ref, FlatMonthSt
   WidgetsBinding.instance.addPostFrameCallback((_) {
     amount.dispose();
     note.dispose();
+    photos.dispose();
   });
-  if (ok != true || value <= 0) return;
+  if (ok != true || value <= 0) {
+    photos.discard(attachments);
+    return;
+  }
   final payment = DuesPayment(
     propertyId: membership.propertyId,
     unitId: membership.unitId,
@@ -594,6 +624,7 @@ Future<void> _claimPaymentSheet(BuildContext context, WidgetRef ref, FlatMonthSt
     note: noteText,
     paidByName: membership.name,
     paidByUid: membership.residentUid,
+    attachmentIds: photos.commit(attachments),
   );
   try {
     await claimDuesPayment(ref.read(firestoreProvider), membership, payment);
@@ -675,7 +706,18 @@ class _ExpensesTab extends ConsumerWidget {
                     context.fmtDate(e.date),
                     if (e.shareFor(unitId) > 0) '${t.yourShare}: ${m(e.shareFor(unitId))}',
                   ].join(' · ')),
-                  trailing: Text(m(e.amount), style: const TextStyle(fontWeight: FontWeight.w600)),
+                  trailing: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(m(e.amount), style: const TextStyle(fontWeight: FontWeight.w600)),
+                      AttachmentBadge(count: e.attachmentIds.length),
+                    ],
+                  ),
+                  onTap: e.attachmentIds.isEmpty
+                      ? null
+                      : () => openAttachmentViewer(
+                          context, ref.read(membershipProvider)?.managerUid ?? '', e.attachmentIds),
                 ),
             ]),
           ),
@@ -757,9 +799,20 @@ class _ProposeExpenseScreenState extends ConsumerState<ProposeExpenseScreen> {
   SplitMethod _split = SplitMethod.equal;
   Set<String> _excluded = {};
   bool _busy = false;
+  late final AttachmentService _attachments = ref.read(attachmentServiceProvider);
+  late final AttachmentController _photos = residentPhotoController(ref, AttachmentScope.building);
+
+  @override
+  void initState() {
+    super.initState();
+    _attachments; // read now: ref can't be used in dispose()
+    _photos;
+  }
 
   @override
   void dispose() {
+    _photos.discard(_attachments);
+    _photos.dispose();
     _amount.dispose();
     _vendor.dispose();
     _notes.dispose();
@@ -795,6 +848,7 @@ class _ProposeExpenseScreenState extends ConsumerState<ProposeExpenseScreen> {
             splitFloors: SplitEditor.includedFloors(units, _excluded),
             shares: shares,
             createdAt: DateTime.now(),
+            attachmentIds: _photos.commit(_attachments),
           );
       await ref.read(proposalServiceProvider).submit(proposal);
       try {
@@ -881,6 +935,8 @@ class _ProposeExpenseScreenState extends ConsumerState<ProposeExpenseScreen> {
               maxLines: 3,
               decoration: InputDecoration(labelText: t.notes, hintText: t.proposalNotesHint),
             ),
+            gap16,
+            AttachmentPicker(controller: _photos, label: t.receiptPhotos),
             gap16,
             FilledButton.icon(
               onPressed: _busy ? null : _submit,
@@ -978,9 +1034,20 @@ class _MaintenanceRequestScreenState extends ConsumerState<MaintenanceRequestScr
   final _estimate = TextEditingController();
   Urgency _urgency = Urgency.normal;
   bool _busy = false;
+  late final AttachmentService _attachments = ref.read(attachmentServiceProvider);
+  late final AttachmentController _photos = residentPhotoController(ref, AttachmentScope.building);
+
+  @override
+  void initState() {
+    super.initState();
+    _attachments; // read now: ref can't be used in dispose()
+    _photos;
+  }
 
   @override
   void dispose() {
+    _photos.discard(_attachments);
+    _photos.dispose();
     _title.dispose();
     _details.dispose();
     _estimate.dispose();
@@ -1009,6 +1076,7 @@ class _MaintenanceRequestScreenState extends ConsumerState<MaintenanceRequestScr
         notes: _details.text.trim(),
         split: SplitMethod.equal,
         createdAt: DateTime.now(),
+        attachmentIds: _photos.commit(_attachments),
       );
       await ref.read(proposalServiceProvider).submit(request);
       try {
@@ -1080,6 +1148,8 @@ class _MaintenanceRequestScreenState extends ConsumerState<MaintenanceRequestScr
               decoration: InputDecoration(labelText: t.estimatedCost),
               validator: numberValidator(context, isRequired: false),
             ),
+            gap16,
+            AttachmentPicker(controller: _photos, label: t.problemPhotos),
             gap16,
             FilledButton.icon(
               onPressed: _busy ? null : _submit,

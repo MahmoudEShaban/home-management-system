@@ -60,6 +60,28 @@ service cloud.firestore {
         allow read: if isMember(managerId)
           && resource.data.unitId == member(managerId).unitId;
       }
+      // Photo attachments (compressed JPEGs stored in Firestore, since the
+      // free plan has no Cloud Storage). 'building' photos (building
+      // expenses, requests) are visible to the building's residents; 'flat'
+      // photos (proof of payment, private flat expenses) only to the flat's.
+      match /attachments/{attachmentId} {
+        allow read: if isMember(managerId)
+          && ((resource.data.scope == 'building'
+                && resource.data.propertyId == member(managerId).propertyId)
+              || (resource.data.scope == 'flat'
+                && resource.data.unitId == member(managerId).unitId));
+        allow create: if isMember(managerId)
+          && request.resource.data.uploadedByUid == request.auth.uid
+          && request.resource.data.propertyId == member(managerId).propertyId
+          && request.resource.data.unitId == member(managerId).unitId
+          && request.resource.data.scope in ['building', 'flat']
+          && request.resource.data.data is bytes
+          && request.resource.data.data.size() <= 800 * 1024;
+        allow delete: if isMember(managerId)
+          && (resource.data.uploadedByUid == request.auth.uid
+              || (resource.data.scope == 'flat'
+                && resource.data.unitId == member(managerId).unitId));
+      }
       // Private flat expenses: only residents linked to that flat can read
       // and write them (the manager sees them through the owner rule above).
       match /flatExpenses/{expenseId} {

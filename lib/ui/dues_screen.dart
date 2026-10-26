@@ -8,6 +8,7 @@ import '../data/notifications.dart';
 import '../data/providers.dart';
 import '../data/rent_logic.dart';
 import '../l10n/strings.dart';
+import 'attachments_widgets.dart';
 import 'common.dart';
 import 'properties_screen.dart' show compareFloors, unitStatusColor, unitStatusIcon;
 
@@ -321,6 +322,10 @@ class _DueTile extends ConsumerWidget {
               ].join(' · '),
               style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
             ),
+            if (p.attachmentIds.isNotEmpty) ...[
+              gap8,
+              AttachmentStrip(managerUid: ref.read(uidProvider) ?? '', ids: p.attachmentIds),
+            ],
           ],
           if (status.state != DueState.nothingDue) ...[gap8, PaymentActions(status: status)],
         ],
@@ -398,6 +403,10 @@ class PaymentsToConfirmScreen extends ConsumerWidget {
                               style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
                             ),
                             if (p.note.isNotEmpty) Text('“${p.note}”'),
+                            if (p.attachmentIds.isNotEmpty) ...[
+                              gap8,
+                              AttachmentStrip(managerUid: ref.read(uidProvider) ?? '', ids: p.attachmentIds, size: 64),
+                            ],
                           ]),
                         ),
                         Text(money(ref, context, p.amount),

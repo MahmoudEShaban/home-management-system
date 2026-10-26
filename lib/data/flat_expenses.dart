@@ -36,6 +36,7 @@ class FlatExpense {
   final String addedByUid;
   final String addedByName;
   final DateTime createdAt;
+  final List<String> attachmentIds;
 
   const FlatExpense({
     this.id = '',
@@ -49,6 +50,7 @@ class FlatExpense {
     required this.addedByUid,
     this.addedByName = '',
     required this.createdAt,
+    this.attachmentIds = const [],
   });
 
   factory FlatExpense.fromMap(String id, Map<String, dynamic> m) => FlatExpense(
@@ -63,6 +65,7 @@ class FlatExpense {
         addedByUid: _s(m['addedByUid']),
         addedByName: _s(m['addedByName']),
         createdAt: _dt(m['createdAt']),
+        attachmentIds: (m['attachmentIds'] as List? ?? const []).map((e) => '$e').toList(),
       );
 
   Map<String, dynamic> toMap() => {
@@ -76,6 +79,7 @@ class FlatExpense {
         'addedByUid': addedByUid,
         'addedByName': addedByName,
         'createdAt': createdAt.millisecondsSinceEpoch,
+        'attachmentIds': attachmentIds,
       };
 }
 

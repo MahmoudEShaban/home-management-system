@@ -2,12 +2,14 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../data/attachments.dart';
 import '../data/models.dart';
 import '../data/providers.dart';
 import '../l10n/strings.dart';
 import '../data/rent_logic.dart';
 import '../data/community.dart';
 import '../data/notifications.dart';
+import 'attachments_widgets.dart';
 import 'common.dart';
 import 'community_screens.dart' show ProposalsBanner;
 import 'properties_screen.dart' show compareFloors;
@@ -142,6 +144,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                       children: [
                         Text(money(ref, context, e.amount),
                             style: const TextStyle(fontWeight: FontWeight.w600)),
+                        AttachmentBadge(count: e.attachmentIds.length),
                       ],
                     ),
                     onTap: () => pushForm(context, ExpenseForm(existing: e)),
@@ -193,6 +196,25 @@ class _ExpenseFormState extends ConsumerState<ExpenseForm> {
   late SplitMethod _split = _e?.split ?? _p?.split ?? SplitMethod.equal;
   bool _notify = true;
 
+  late final AttachmentService _attachments;
+  late final AttachmentController _photos;
+
+  @override
+  void initState() {
+    super.initState();
+    _attachments = ref.read(attachmentServiceProvider);
+    final uid = ref.read(uidProvider) ?? '';
+    _photos = AttachmentController(
+      managerUid: uid,
+      propertyId: _propertyId ?? '',
+      unitId: _unitId,
+      scope: AttachmentScope.building,
+      uploaderUid: uid,
+      // A resident's photos come along when approving their request.
+      initial: _e?.attachmentIds ?? _p?.attachmentIds ?? const [],
+    );
+  }
+
   /// Floors excluded from the split. Stored as exclusions so floors added to
   /// the building later are included by default.
   late final Set<String> _excludedFloors = {};
@@ -200,6 +222,8 @@ class _ExpenseFormState extends ConsumerState<ExpenseForm> {
 
   @override
   void dispose() {
+    _photos.discard(_attachments);
+    _photos.dispose();
     _amount.dispose();
     _vendor.dispose();
     _notes.dispose();
@@ -241,6 +265,10 @@ class _ExpenseFormState extends ConsumerState<ExpenseForm> {
     final units = _units;
     final wholeBuilding = _unitId.isEmpty;
     final shares = wholeBuilding ? _shares(units) : const <ExpenseShare>[];
+    _photos
+      ..propertyId = _propertyId!
+      ..unitId = _unitId;
+    final photoIds = _photos.commit(_attachments, retag: true);
     final expense = Expense(
           id: _e?.id ?? '',
           propertyId: _propertyId!,
@@ -256,6 +284,7 @@ class _ExpenseFormState extends ConsumerState<ExpenseForm> {
           shares: shares,
           proposedByName: _e?.proposedByName ?? _p?.residentName ?? '',
           proposalId: _e?.proposalId ?? _p?.id ?? '',
+          attachmentIds: photoIds,
         );
     final id = ref.read(expenseRepo).save(expense);
     final arabic = context.t.ar;
@@ -311,6 +340,9 @@ class _ExpenseFormState extends ConsumerState<ExpenseForm> {
               onPressed: () async {
                 if (await confirmDialog(context, t.deleteConfirm, confirmLabel: t.delete)) {
                   ref.read(expenseRepo).delete(_e!.id);
+                  for (final id in _e!.attachmentIds) {
+                    _attachments.delete(_photos.managerUid, id).catchError((Object e) => debugPrint('$e'));
+                  }
                   if (context.mounted) Navigator.pop(context);
                 }
               },
@@ -412,6 +444,8 @@ class _ExpenseFormState extends ConsumerState<ExpenseForm> {
                     ),
                   gap12,
                   TextFormField(controller: _notes, maxLines: 3, decoration: InputDecoration(labelText: t.notes)),
+                  gap16,
+                  AttachmentPicker(controller: _photos, label: t.receiptPhotos),
                 ],
               ),
             ),

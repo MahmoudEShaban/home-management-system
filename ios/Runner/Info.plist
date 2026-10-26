@@ -36,6 +36,10 @@
 			</array>
 		</dict>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Take photos of receipts and bills to attach to expenses and payments.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Choose photos of receipts and bills to attach to expenses and payments.</string>
 	<key>GIDClientID</key>
 	<string>683347678237-qqi76vdrvf4up2uoq7r3g542sd2ljj7o.apps.googleusercontent.com</string>
 	<key>GIDServerClientID</key>
