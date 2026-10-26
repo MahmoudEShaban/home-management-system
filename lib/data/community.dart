@@ -29,6 +29,10 @@ const kRoleResident = 'resident';
 
 /// Account that manages buildings and is also a resident of a flat.
 const kRoleBoth = 'both';
+
+/// A new account that hasn't chosen manager or resident yet (e.g. first
+/// Google sign-in from the sign-in page). The app asks once.
+const kRoleUnset = 'unset';
 const _kPendingRole = 'auth.pendingRole';
 const _kActiveView = 'view.active';
 
@@ -57,6 +61,20 @@ final hasBothRolesProvider =
 void setPendingRole(SharedPreferences prefs, String role) =>
     prefs.setString(_kPendingRole, role);
 
+/// Signing in (not up): no role choice was made on this screen.
+void clearPendingRole(SharedPreferences prefs) => prefs.remove(_kPendingRole);
+
+/// Saves the one-time role choice of a new account.
+Future<void> chooseRole(Ref ref, String role) async {
+  final uid = ref.read(uidProvider);
+  if (uid == null) return;
+  await ref.read(firestoreProvider).collection('users').doc(uid).set({'role': role}, SetOptions(merge: true));
+  await ref.read(prefsProvider).remove(_kPendingRole);
+}
+
+/// Call with the role picked on the "Choose your role" screen.
+final roleChoiceProvider = Provider<Future<void> Function(String)>((ref) => (role) => chooseRole(ref, role));
+
 /// The signed-in account's role. Accounts created before roles existed are
 /// managers.
 final roleProvider = StreamProvider<String>((ref) {
@@ -67,9 +85,10 @@ final roleProvider = StreamProvider<String>((ref) {
 
   /// Role for an account whose document has no role yet.
   Future<String> decide(Map<String, dynamic>? data, {required bool save}) async {
-    var chosen = prefs.getString(_kPendingRole) ?? kRoleManager;
+    final pending = prefs.getString(_kPendingRole);
+    var chosen = pending ?? kRoleUnset;
     // An account that already manages buildings stays a manager.
-    if (chosen == kRoleResident) {
+    if (chosen != kRoleManager) {
       try {
         final hasData = data?['profile'] != null ||
             (await doc.collection('properties').limit(1).get()).docs.isNotEmpty;
@@ -78,6 +97,8 @@ final roleProvider = StreamProvider<String>((ref) {
         // Offline: keep the chosen role.
       }
     }
+    // No choice made (signed in, not up, with a new account): ask once.
+    if (chosen == kRoleUnset) return kRoleUnset;
     if (save) {
       unawaited(doc
           .set({'role': chosen}, SetOptions(merge: true))
@@ -112,9 +133,9 @@ final roleProvider = StreamProvider<String>((ref) {
           yield await decide(server.data(), save: true);
         }
       } catch (_) {
-        // Offline: use the choice made at sign-in without saving it, so a
-        // resident's stored role is never overwritten.
-        yield prefs.getString(_kPendingRole) ?? kRoleManager;
+        // Offline: use the choice made at sign-up without saving it, so a
+        // stored role is never overwritten; with no choice, ask.
+        yield prefs.getString(_kPendingRole) ?? kRoleUnset;
       }
     }
   }();

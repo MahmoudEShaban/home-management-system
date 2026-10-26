@@ -13,6 +13,7 @@ import 'ui/expenses_screen.dart';
 import 'ui/invoices_screen.dart';
 import 'ui/properties_screen.dart';
 import 'ui/resident_screens.dart';
+import 'ui/role_choice_screen.dart';
 import 'ui/more_screen.dart';
 import 'ui/common.dart';
 import 'ui/onboarding_screen.dart';
@@ -71,6 +72,8 @@ class AuthGate extends ConsumerWidget {
           error: (e, _) => ErrorScreen(error: e, onRetry: () => ref.invalidate(roleProvider)),
           // Keyed by uid so all per-user state resets when the account changes.
           data: (r) {
+            // New account with no role yet (e.g. first Google sign-in): ask once.
+            if (r == kRoleUnset) return RoleChoiceScreen(key: ValueKey('role${user.uid}'));
             final view = r == kRoleBoth ? ref.watch(activeViewProvider) : r;
             return view == kRoleResident
                 ? ResidentGate(key: ValueKey('r${user.uid}'))

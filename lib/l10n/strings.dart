@@ -592,6 +592,9 @@ class L10n {
   String get yourPayments => _tr('Your payments', 'مدفوعاتك');
   String get sharesToPayTab => _tr('Shares to pay', 'أنصبة للدفع');
   String get submittedByMe => _tr('Submitted by me', 'طلباتي');
+  String get chooseRoleBody => _tr('How will you use the app?', 'كيف ستستخدم التطبيق؟');
+  String get chooseRoleOnce => _tr(
+      'You choose this once for your account.', 'يتم اختيار ذلك مرة واحدة لحسابك.');
   String get stillLoading => _tr('This is taking longer than usual', 'التحميل يستغرق وقتاً أطول من المعتاد');
   String get stillLoadingHint => _tr(
       'Check your internet connection, then try again. If it keeps happening, sign out and sign in again.',

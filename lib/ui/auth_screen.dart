@@ -43,8 +43,14 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   }
 
   Future<void> _run(Future<void> Function() action) async {
-    // Applied only if this account has no role yet (i.e. a new account).
-    setPendingRole(ref.read(prefsProvider), _role);
+    // The role is chosen once, when signing up, and only applies to a new
+    // account. Signing in never changes it. Google from the sign-in page: an
+    // existing account keeps its saved role; a new one is asked next.
+    if (_register) {
+      setPendingRole(ref.read(prefsProvider), _role);
+    } else {
+      clearPendingRole(ref.read(prefsProvider));
+    }
     setState(() => _busy = true);
     try {
       await action();
@@ -173,27 +179,37 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                         textAlign: TextAlign.center,
                         style: TextStyle(color: cs.onSurfaceVariant)),
                     const SizedBox(height: 24),
-                    Text(t.iAmA, style: Theme.of(context).textTheme.labelLarge),
-                    gap8,
-                    SegmentedButton<String>(
-                      showSelectedIcon: false,
-                      segments: [
-                        ButtonSegment(
-                            value: kRoleManager,
-                            icon: const Icon(Icons.manage_accounts_outlined),
-                            label: Text(t.roleManager)),
-                        ButtonSegment(
-                            value: kRoleResident,
-                            icon: const Icon(Icons.home_outlined),
-                            label: Text(t.roleResident)),
-                      ],
-                      selected: {_role},
-                      onSelectionChanged: (v) => setState(() => _role = v.first),
+                    // One-time choice, only when creating an account.
+                    AnimatedSize(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeOutCubic,
+                      alignment: Alignment.topCenter,
+                      child: _register
+                          ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                        Text(t.iAmA, style: Theme.of(context).textTheme.labelLarge),
+                        gap8,
+                        SegmentedButton<String>(
+                          showSelectedIcon: false,
+                          segments: [
+                            ButtonSegment(
+                                value: kRoleManager,
+                                icon: const Icon(Icons.manage_accounts_outlined),
+                                label: Text(t.roleManager)),
+                            ButtonSegment(
+                                value: kRoleResident,
+                                icon: const Icon(Icons.home_outlined),
+                                label: Text(t.roleResident)),
+                          ],
+                          selected: {_role},
+                          onSelectionChanged: (v) => setState(() => _role = v.first),
+                        ),
+                        gap8,
+                        Text(_role == kRoleResident ? t.roleResidentHint : t.roleManagerHint,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12)),
+                            ])
+                          : const SizedBox(width: double.infinity),
                     ),
-                    gap8,
-                    Text(_role == kRoleResident ? t.roleResidentHint : t.roleManagerHint,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12)),
                     const SizedBox(height: 24),
                     OutlinedButton.icon(
                       onPressed: _busy ? null : _google,
