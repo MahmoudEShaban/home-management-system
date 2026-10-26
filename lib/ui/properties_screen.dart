@@ -9,6 +9,7 @@ import '../data/community.dart';
 import 'common.dart';
 import 'community_screens.dart';
 import 'flat_expenses_screen.dart' show FlatExpensesPanel;
+import 'spending_screen.dart' show SpendingScreen;
 import 'dues_screen.dart';
 
 Color unitStatusColor(UnitStatus s) => switch (s) {
@@ -476,6 +477,18 @@ class UnitDetailScreen extends ConsumerWidget {
           ),
           LinkedResidentPanel(unitId: unit.id),
           FlatExpensesPanel(unitId: unit.id),
+          gap8,
+          Panel(
+            padding: EdgeInsets.zero,
+            child: ListTile(
+              leading: const Icon(Icons.account_balance_wallet_outlined),
+              title: Text(t.flatSpending),
+              subtitle: Text(t.mySpendingManagerHint),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => push(context,
+                  SpendingScreen(manager: true, unitId: unit.id, title: '${t.flatSpending} · ${unit.name}')),
+            ),
+          ),
           SectionTitle(t.duesThisMonth,
               trailing: Text(context.fmtMonth(month), style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12))),
           Panel(

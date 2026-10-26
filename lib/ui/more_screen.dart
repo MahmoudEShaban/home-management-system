@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/community.dart';
+import '../data/flat_expenses.dart';
 import '../data/google_auth.dart';
 import '../data/local_alerts.dart';
 import '../data/phone_account.dart';
 import '../data/providers.dart';
+import '../data/share_payments.dart';
 import '../l10n/strings.dart';
 import 'attachments_widgets.dart';
 import 'common.dart';
@@ -15,6 +17,7 @@ import 'community_screens.dart' show ExpenseApprovalsScreen;
 import 'onboarding_screen.dart' show onboardingDoneProvider;
 import 'resident_screens.dart' show FlatStatusPanel, proposalColor;
 import 'settings_screen.dart' show LanguageMenuButton, SettingsScreen;
+import 'spending_screen.dart';
 
 // "More" tab: profile, change name / phone, maintenance requests, settings,
 // log out. Used by both the manager and the resident home screens.
@@ -473,7 +476,48 @@ class _MyFlatSection extends ConsumerWidget {
           ].where((s) => s.isNotEmpty).join(' · ')),
         ),
       ),
+      gap8,
+      const _SpendingTile(),
       if (unit != null) ...[gap8, FlatStatusPanel(unit: unit, property: property)],
     ]);
+  }
+}
+
+/// Opens "My payments & spending" and shows this year's total.
+class _SpendingTile extends ConsumerWidget {
+  const _SpendingTile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.t;
+    final cs = Theme.of(context).colorScheme;
+    final m = ref.watch(membershipProvider);
+    if (m == null) return const SizedBox.shrink();
+    final year = DateTime.now().year;
+    final items = flatSpending(
+      t: t,
+      unitId: m.unitId,
+      dues: ref.watch(residentDuesPaymentsProvider).value ?? const [],
+      shares: ref.watch(residentSharePaymentsProvider).value ?? const [],
+      flatExpenses: ref.watch(residentFlatExpensesProvider).value ?? const [],
+      expenses: ref.watch(residentExpensesProvider).value ?? const [],
+      periodLabel: context.fmtPeriod,
+    );
+    final total = items.where((i) => !i.pending && i.date.year == year).fold<double>(0, (s, i) => s + i.amount);
+    final currency = ref.watch(residentProfileProvider).value?.currency ?? 'EGP';
+    return Panel(
+      padding: EdgeInsets.zero,
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: cs.tertiaryContainer,
+          child: Icon(Icons.account_balance_wallet_outlined, color: cs.onTertiaryContainer),
+        ),
+        title: Text(t.mySpending, style: const TextStyle(fontWeight: FontWeight.w600)),
+        subtitle: Text('${t.flatSpendingHint('$year')}: '
+            '${formatMoney(total, currency, Localizations.localeOf(context).languageCode)}'),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => push(context, const SpendingScreen()),
+      ),
+    );
   }
 }

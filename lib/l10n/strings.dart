@@ -540,6 +540,34 @@ class L10n {
       'A resident paid for this maintenance. Each flat repays its share to them and they confirm it; you can also confirm on their behalf. Not part of the monthly dues or the fund.',
       'دفع أحد السكان تكلفة هذه الصيانة. تسدد كل شقة نصيبها له ويؤكد هو الاستلام، ويمكنك التأكيد نيابة عنه. لا تدخل ضمن المستحقات الشهرية أو الصندوق.');
   String paidByResidentNote(String name) => _tr('Paid by $name · repay directly', 'دفعها $name · السداد له مباشرة');
+  // Payments & spending
+  String get mySpending => _tr('My payments & spending', 'مدفوعاتي ومصروفاتي');
+  String get flatSpending => _tr('Payments & spending', 'المدفوعات والمصروفات');
+  String flatSpendingHint(String year) => _tr('Spent in $year', 'المصروف في $year');
+  String spendDues(String period) => _tr('Monthly dues · $period', 'المستحقات الشهرية · $period');
+  String get maintenanceShare => _tr('Maintenance share', 'نصيب صيانة');
+  String get repairYouPaid => _tr('Repair paid up front', 'إصلاح مدفوع مقدمًا');
+  String repaidBy(String flat) => _tr('Repaid by $flat', 'سدّده $flat');
+  String get repaidToYou => _tr('Repaid to you', 'مسدَّد لك');
+  String get allTime => _tr('All time', 'كل الفترات');
+  String get totalSpent => _tr('Total spent', 'إجمالي المصروف');
+  String pendingNotCounted(String amount) =>
+      _tr('$amount waiting for confirmation (not counted yet)', '$amount في انتظار التأكيد (غير محسوبة بعد)');
+  String get spendToBuilding => _tr('Paid to the building', 'مدفوع للعقار');
+  String get spendShares => _tr('Maintenance shares repaid', 'أنصبة صيانة مسددة');
+  String get spendRepairsNet => _tr('Repairs you paid (after repayments)', 'إصلاحات دفعتها (بعد السداد)');
+  String get spendPrivate => _tr('Private flat expenses', 'مصروفات الشقة الخاصة');
+  String get onlyPaidByMe => _tr('Only what I paid', 'ما دفعته أنا فقط');
+  String get onlyPaidByYou => _tr('Only what you paid', 'ما دفعته أنت فقط');
+  String get onlyMineHint => _tr(
+      'Off: everything for the flat, including other residents of the flat.',
+      'عند الإيقاف: كل ما يخص الشقة، بما في ذلك باقي سكانها.');
+  String get history => _tr('History', 'السجل');
+  String get noSpending => _tr('Nothing paid in this period', 'لا توجد مدفوعات في هذه الفترة');
+  String get waitingConfirmation => _tr('Waiting for confirmation', 'في انتظار التأكيد');
+  String get mySpendingManagerHint => _tr(
+      'Everything this flat paid: dues, maintenance shares, repairs and private expenses',
+      'كل ما دفعته الشقة: المستحقات وأنصبة الصيانة والإصلاحات والمصروفات الخاصة');
   String get stillLoading => _tr('This is taking longer than usual', 'التحميل يستغرق وقتاً أطول من المعتاد');
   String get stillLoadingHint => _tr(
       'Check your internet connection, then try again. If it keeps happening, sign out and sign in again.',
