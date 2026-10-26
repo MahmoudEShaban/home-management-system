@@ -503,7 +503,6 @@ class _DuesTab extends ConsumerWidget {
             AttachmentStrip(managerUid: ref.read(membershipProvider)?.managerUid ?? '', ids: p.attachmentIds),
           ],
         ],
-        _FlatStatusPanel(unit: unit, property: property),
         SectionTitle(t.quickActions),
         Wrap(spacing: 8, runSpacing: 8, children: [
           ActionChip(
@@ -1171,18 +1170,18 @@ class _MaintenanceRequestScreenState extends ConsumerState<MaintenanceRequestScr
   }
 }
 
-/// Resident chooses whether they live in the flat (occupied) or it's closed.
-/// Any resident linked to the flat can change it; the manager is notified.
-class _FlatStatusPanel extends ConsumerStatefulWidget {
-  const _FlatStatusPanel({required this.unit, required this.property});
+/// Resident asks to mark the flat occupied ("Living here") or closed;
+/// the building manager approves. Shown in the More tab under "My flat".
+class FlatStatusPanel extends ConsumerStatefulWidget {
+  const FlatStatusPanel({super.key, required this.unit, required this.property});
   final Unit unit;
   final Property? property;
 
   @override
-  ConsumerState<_FlatStatusPanel> createState() => _FlatStatusPanelState();
+  ConsumerState<FlatStatusPanel> createState() => _FlatStatusPanelState();
 }
 
-class _FlatStatusPanelState extends ConsumerState<_FlatStatusPanel> {
+class _FlatStatusPanelState extends ConsumerState<FlatStatusPanel> {
   bool _busy = false;
 
   UnitStatus get _current =>
@@ -1248,9 +1247,10 @@ class _FlatStatusPanelState extends ConsumerState<_FlatStatusPanel> {
     String label(UnitStatus s) => s == UnitStatus.closed ? t.flatClosed : t.flatOccupied;
 
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      SectionTitle(t.myFlatStatus),
       Panel(
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Text(t.occupancyStatus, style: Theme.of(context).textTheme.labelLarge),
+          gap8,
           SegmentedButton<UnitStatus>(
             showSelectedIcon: false,
             segments: [

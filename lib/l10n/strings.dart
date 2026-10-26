@@ -518,6 +518,8 @@ class L10n {
   String get goodMorning => _tr('Good morning', 'صباح الخير');
   String get goodAfternoon => _tr('Good afternoon', 'نهارك سعيد');
   String get goodEvening => _tr('Good evening', 'مساء الخير');
+  String get fixedMonthly => _tr('Fixed monthly cost', 'التكلفة الشهرية الثابتة');
+  String get occupancyStatus => _tr('Who lives here', 'حالة الإشغال');
   String get stillLoading => _tr('This is taking longer than usual', 'التحميل يستغرق وقتاً أطول من المعتاد');
   String get stillLoadingHint => _tr(
       'Check your internet connection, then try again. If it keeps happening, sign out and sign in again.',

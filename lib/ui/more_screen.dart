@@ -13,7 +13,7 @@ import 'attachments_widgets.dart';
 import 'common.dart';
 import 'community_screens.dart' show ExpenseApprovalsScreen;
 import 'onboarding_screen.dart' show onboardingDoneProvider;
-import 'resident_screens.dart' show proposalColor;
+import 'resident_screens.dart' show FlatStatusPanel, proposalColor;
 import 'settings_screen.dart' show LanguageMenuButton, SettingsScreen;
 
 // "More" tab: profile, change name / phone, maintenance requests, settings,
@@ -85,6 +85,7 @@ class MoreScreen extends ConsumerWidget {
               ]),
             ),
           ),
+          if (resident) const _MyFlatSection(),
           SectionTitle(t.account),
           Panel(
             padding: EdgeInsets.zero,
@@ -434,5 +435,45 @@ class _MaintenanceRequestsScreenState extends ConsumerState<MaintenanceRequestsS
         ],
       ),
     );
+  }
+}
+
+// ─────────────────────────── My flat (residents) ───────────────────────────
+
+/// The resident's flat: which flat and building, its fixed monthly cost,
+/// and the occupancy switch (changes need the manager's approval).
+class _MyFlatSection extends ConsumerWidget {
+  const _MyFlatSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.t;
+    final cs = Theme.of(context).colorScheme;
+    final m = ref.watch(membershipProvider);
+    final unit = ref.watch(residentUnitProvider).value;
+    final property = ref.watch(residentPropertyProvider).value;
+    if (m == null) return const SizedBox.shrink();
+    final currency = ref.watch(residentProfileProvider).value?.currency ?? 'EGP';
+    final lang = Localizations.localeOf(context).languageCode;
+
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      SectionTitle(t.myFlatStatus),
+      Panel(
+        padding: EdgeInsets.zero,
+        child: ListTile(
+          leading: CircleAvatar(
+            backgroundColor: cs.primaryContainer,
+            child: Icon(Icons.door_front_door_outlined, color: cs.onPrimaryContainer),
+          ),
+          title: Text(unit?.name ?? m.unitName, style: const TextStyle(fontWeight: FontWeight.w700)),
+          subtitle: Text([
+            if (unit != null && unit.floor.isNotEmpty) t.floorLabel(unit.floor),
+            property?.name ?? m.propertyName,
+            if (unit != null) '${t.fixedMonthly}: ${formatMoney(unit.monthlyFee, currency, lang)}',
+          ].where((s) => s.isNotEmpty).join(' · ')),
+        ),
+      ),
+      if (unit != null) ...[gap8, FlatStatusPanel(unit: unit, property: property)],
+    ]);
   }
 }
