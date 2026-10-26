@@ -7,7 +7,9 @@ import '../data/providers.dart';
 import '../l10n/strings.dart';
 import 'settings_screen.dart' show LanguageMenuButton;
 
-const _kOnboardingDone = 'onboarding.done';
+// Bump the version when the tour gains new pages so existing users see it
+// once more. v2: payments, approvals, private flat expenses, accounts.
+const _kOnboardingDone = 'onboarding.done.v2';
 
 /// Whether the first-run introduction has been seen on this phone.
 class OnboardingController extends StateNotifier<bool> {
@@ -63,8 +65,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     final pages = [
       _Page('assets/animations/onboarding_buildings.json', t.introTitle1, t.introBody1),
       _Page('assets/animations/onboarding_split.json', t.introTitle2, t.introBody2),
-      _Page('assets/animations/onboarding_approve.json', t.introTitle3, t.introBody3),
-      _Page('assets/animations/onboarding_bell.json', t.introTitle4, t.introBody4),
+      _Page('assets/animations/onboarding_payments.json', t.introTitle3, t.introBody3),
+      _Page('assets/animations/onboarding_approve.json', t.introTitle4, t.introBody4),
+      _Page('assets/animations/onboarding_private.json', t.introTitle5, t.introBody5),
+      _Page('assets/animations/onboarding_bell.json', t.introTitle6, t.introBody6),
+      _Page('assets/animations/onboarding_account.json', t.introTitle7, t.introBody7),
     ];
     final last = _page == pages.length - 1;
 
@@ -110,7 +115,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       ),
                       Expanded(
                         flex: 3,
-                        child: Column(children: [
+                        child: SingleChildScrollView(child: Column(children: [
                           Text(p.title,
                               textAlign: TextAlign.center,
                               style: Theme.of(context)
@@ -124,7 +129,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                                   .textTheme
                                   .bodyLarge
                                   ?.copyWith(color: cs.onSurfaceVariant, height: 1.4)),
-                        ]),
+                        ])),
                       ),
                     ],
                   ),

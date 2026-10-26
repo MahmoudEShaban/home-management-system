@@ -383,20 +383,32 @@ class L10n {
   String get getStartedButton => _tr('Get started', 'ابدأ الآن');
   String get introTitle1 => _tr('Your buildings, organised', 'عقاراتك منظمة');
   String get introBody1 => _tr(
-      'Add buildings with their floors and flats, mark each flat as owner living, closed or rented, and set its fixed monthly cost.',
-      'أضف العقارات بأدوارها وشققها، وحدد حالة كل شقة (المالك مقيم أو مغلقة أو مؤجرة) وتكلفتها الشهرية الثابتة.');
+      'Add buildings with a ground floor, numbered floors and a roof, then name each flat and set its fixed monthly cost. Several owners can share one flat.',
+      'أضف العقارات بالدور الأرضي والأدوار والسطح، ثم سمِّ كل شقة وحدد تكلفتها الشهرية الثابتة. يمكن لأكثر من مالك مشاركة الشقة نفسها.');
   String get introTitle2 => _tr('Expenses split fairly', 'تقسيم عادل للمصروفات');
   String get introBody2 => _tr(
-      'Log electricity, water, elevator and repairs once. The app splits each bill between the flats and shows what every flat owes.',
-      'سجّل الكهرباء والمياه والمصعد والصيانة مرة واحدة، ويقسم التطبيق كل فاتورة على الشقق ويعرض مستحقات كل شقة.');
-  String get introTitle3 => _tr('Residents on board', 'السكان معك');
+      'Log electricity, water, the elevator or repairs once, with photos of the receipt. The app splits each bill by floor or flat and shows what every flat owes.',
+      'سجّل الكهرباء أو المياه أو المصعد أو الصيانة مرة واحدة مع صور الإيصال، ويقسم التطبيق كل فاتورة على الأدوار أو الشقق ويعرض مستحقات كل شقة.');
+  String get introTitle3 => _tr('Dues paid, at a glance', 'المستحقات والمدفوعات بنظرة واحدة');
   String get introBody3 => _tr(
-      'Flat owners join with the building code, see their own dues and invoices, and suggest expenses for you to approve.',
-      'ينضم ملاك الشقق بكود العقار، ويرون مستحقاتهم وفواتيرهم، ويقترحون مصروفات لتوافق عليها.');
-  String get introTitle4 => _tr('Everyone stays informed', 'الجميع على اطلاع');
+      'Residents tap "I\'ve paid" and attach proof; the manager confirms. The home page shows expenses, income, late flats and the fund balance, monthly or yearly.',
+      'يضغط السكان "دفعت" ويرفقون إثبات الدفع، ويؤكد المدير. وتعرض الصفحة الرئيسية المصروفات والإيرادات والشقق المتأخرة ورصيد الصندوق، شهريًا أو سنويًا.');
+  String get introTitle4 => _tr('Requests the manager approves', 'طلبات يوافق عليها المدير');
   String get introBody4 => _tr(
-      'New expenses, approvals and your messages arrive as notifications, and your data is backed up to Google Drive.',
-      'تصل المصروفات الجديدة والموافقات ورسائلك كإشعارات، وتُحفظ بياناتك احتياطيًا على Google Drive.');
+      'Residents send maintenance requests and suggest expenses, and ask to mark their flat occupied or not. The manager approves and sets each flat\'s share.',
+      'يرسل السكان طلبات الصيانة ويقترحون المصروفات، ويطلبون تغيير حالة إشغال الشقة. ويوافق المدير ويحدد نصيب كل شقة.');
+  String get introTitle5 => _tr('Your flat, kept private', 'شقتك بخصوصية تامة');
+  String get introBody5 => _tr(
+      'Record your own flat\'s expenses, like a repair inside the flat. Only the flat\'s residents and the building manager can see them.',
+      'سجّل مصروفات شقتك الخاصة، مثل إصلاح داخل الشقة. لا يراها إلا سكان الشقة ومدير العقار.');
+  String get introTitle6 => _tr('Everyone stays informed', 'الجميع على اطلاع');
+  String get introBody6 => _tr(
+      'New expenses, approvals, payments and the manager\'s messages arrive as phone notifications. Data is backed up to Google Drive.',
+      'تصل المصروفات الجديدة والموافقات والمدفوعات ورسائل المدير كإشعارات على الهاتف، وتُحفظ البيانات احتياطيًا على Google Drive.');
+  String get introTitle7 => _tr('Your account, your way', 'حسابك كما تحب');
+  String get introBody7 => _tr(
+      'Sign up with your phone number, email or Google. The More tab lets you change your name and phone and follow your maintenance requests, in Arabic or English.',
+      'سجّل برقم هاتفك أو بريدك أو حساب جوجل. ومن تبويب "المزيد" يمكنك تغيير اسمك ورقمك ومتابعة طلبات الصيانة، بالعربية أو الإنجليزية.');
   // Shared flats and resident-set flat status
   String residentAccountsCount(int n) => _tr('$n resident accounts', '$n حسابات سكان');
   String get sharedFlatHint => _tr(
