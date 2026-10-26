@@ -431,6 +431,26 @@ class L10n {
   String get flatExpenseTitleHint => _tr('e.g. Kitchen tap repair', 'مثال: إصلاح حنفية المطبخ');
   String get flatExpenseSaved => _tr('Flat expense saved', 'تم حفظ مصروف الشقة');
   String addedByLine(String name) => _tr('Added by $name', 'أضافه $name');
+  // Phone sign-up
+  String get orSignInWith => _tr('or use', 'أو استخدم');
+  String get phoneNumber => _tr('Phone number', 'رقم الهاتف');
+  String get phoneFormatHint => _tr('Egyptian numbers like 010…, or +country code', 'أرقام مصرية مثل 010… أو + كود الدولة');
+  String get invalidPhone => _tr('Enter a valid phone number', 'أدخل رقم هاتف صحيح');
+  String get firstName => _tr('First name', 'الاسم الأول');
+  String get lastName => _tr('Last name', 'اسم العائلة');
+  String get invalidEmail => _tr('Enter a valid email', 'أدخل بريدًا إلكترونيًا صحيحًا');
+  String get phoneAlreadyRegistered =>
+      _tr('This phone number already has an account. Sign in instead.', 'هذا الرقم لديه حساب بالفعل. سجّل الدخول بدلًا من ذلك.');
+  String get emailAlreadyRegistered =>
+      _tr('This email already has an account. Sign in instead.', 'هذا البريد لديه حساب بالفعل. سجّل الدخول بدلًا من ذلك.');
+  String get phoneOrPasswordWrong => _tr('Wrong phone number or password', 'رقم الهاتف أو كلمة المرور غير صحيحة');
+  String get emailOrPasswordWrong => _tr('Wrong email or password', 'البريد الإلكتروني أو كلمة المرور غير صحيحة');
+  String get tooManyAttempts =>
+      _tr('Too many attempts. Wait a few minutes and try again.', 'محاولات كثيرة. انتظر بضع دقائق ثم حاول مرة أخرى.');
+  String get noInternet => _tr('No internet connection', 'لا يوجد اتصال بالإنترنت');
+  String get phoneResetHint => _tr(
+      'Phone accounts can\'t reset the password by email. Ask your building manager for help, or sign in with Google.',
+      'لا يمكن إعادة تعيين كلمة مرور حسابات الهاتف عبر البريد. اطلب المساعدة من مدير العقار أو سجّل الدخول بجوجل.');
   String get stillLoading => _tr('This is taking longer than usual', 'التحميل يستغرق وقتاً أطول من المعتاد');
   String get stillLoadingHint => _tr(
       'Check your internet connection, then try again. If it keeps happening, sign out and sign in again.',

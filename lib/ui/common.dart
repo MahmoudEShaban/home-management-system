@@ -48,6 +48,11 @@ ThemeData buildTheme(Brightness brightness) {
     scaffoldBackgroundColor: brightness == Brightness.light
         ? const Color(0xFFF6F7F5)
         : scheme.surface,
+    // Smoother page changes: fade-forward on Android, slide on iOS.
+    pageTransitionsTheme: const PageTransitionsTheme(builders: {
+      TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
+      TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+    }),
     appBarTheme: AppBarTheme(
       centerTitle: false,
       backgroundColor: Colors.transparent,
@@ -82,7 +87,17 @@ class EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 56, color: cs.outline),
+            Entrance(
+              offset: 0,
+              scale: 0.4,
+              curve: Curves.elasticOut,
+              duration: const Duration(milliseconds: 900),
+              child: Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(color: cs.primaryContainer.withValues(alpha: 0.5), shape: BoxShape.circle),
+                child: Icon(icon, size: 44, color: cs.primary),
+              ),
+            ),
             const SizedBox(height: 12),
             Text(message,
                 textAlign: TextAlign.center,
@@ -104,14 +119,18 @@ class Panel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Container(
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.6)),
+    // Slides and fades in when it first appears (e.g. scrolling into view).
+    return Entrance(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.6)),
+        ),
+        padding: padding,
+        child: child,
       ),
-      padding: padding,
-      child: child,
     );
   }
 }
@@ -122,7 +141,9 @@ class SectionTitle extends StatelessWidget {
   final Widget? trailing;
 
   @override
-  Widget build(BuildContext context) => Padding(
+  Widget build(BuildContext context) => Entrance(
+      offset: 8,
+      child: Padding(
         padding: const EdgeInsetsDirectional.fromSTEB(4, 20, 4, 8),
         child: Row(children: [
           Expanded(
@@ -134,7 +155,7 @@ class SectionTitle extends StatelessWidget {
           ),
           if (trailing != null) trailing!,
         ]),
-      );
+      ));
 }
 
 class StatusChip extends StatelessWidget {
@@ -454,4 +475,105 @@ class ErrorScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+// ─────────────────────────────── Animation ───────────────────────────────
+
+/// True when the phone asks for reduced motion (accessibility setting).
+bool reduceMotion(BuildContext context) => MediaQuery.maybeDisableAnimationsOf(context) ?? false;
+
+/// Fades, slides up and optionally grows [child] in the first time it is
+/// built. Rebuilds don't replay it.
+class Entrance extends StatelessWidget {
+  const Entrance({
+    super.key,
+    required this.child,
+    this.delay = Duration.zero,
+    this.duration = const Duration(milliseconds: 420),
+    this.offset = 18,
+    this.scale = 1,
+    this.curve = Curves.easeOutCubic,
+  });
+  final Widget child;
+  final Duration delay;
+  final Duration duration;
+  final double offset;
+  final double scale;
+  final Curve curve;
+
+  @override
+  Widget build(BuildContext context) {
+    if (reduceMotion(context)) return child;
+    final total = delay + duration;
+    final start = total.inMicroseconds == 0 ? 0.0 : delay.inMicroseconds / total.inMicroseconds;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: total,
+      curve: Interval(start, 1, curve: curve),
+      child: child,
+      builder: (context, v, child) {
+        final o = v.clamp(0.0, 1.0);
+        Widget w = Transform.translate(offset: Offset(0, (1 - v) * offset), child: child);
+        if (scale != 1) w = Transform.scale(scale: scale + (1 - scale) * v, child: w);
+        return Opacity(opacity: o, child: w);
+      },
+    );
+  }
+}
+
+/// Number text that counts up to [value] and animates when it changes.
+class AnimatedNumber extends StatelessWidget {
+  const AnimatedNumber({super.key, required this.value, required this.format, this.style});
+  final double value;
+  final String Function(double) format;
+  final TextStyle? style;
+
+  @override
+  Widget build(BuildContext context) {
+    if (reduceMotion(context)) return Text(format(value), style: style);
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: value),
+      duration: const Duration(milliseconds: 900),
+      curve: Curves.easeOutCubic,
+      builder: (context, v, _) => Text(format(v), style: style),
+    );
+  }
+}
+
+/// IndexedStack (keeps each tab's state) that fades and slightly slides the
+/// newly selected tab in.
+class FadeIndexedStack extends StatefulWidget {
+  const FadeIndexedStack({super.key, required this.index, required this.children});
+  final int index;
+  final List<Widget> children;
+
+  @override
+  State<FadeIndexedStack> createState() => _FadeIndexedStackState();
+}
+
+class _FadeIndexedStackState extends State<FadeIndexedStack> with SingleTickerProviderStateMixin {
+  late final _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 280), value: 1);
+  late final _curve = CurvedAnimation(parent: _c, curve: Curves.easeOutCubic);
+
+  @override
+  void didUpdateWidget(FadeIndexedStack old) {
+    super.didUpdateWidget(old);
+    if (old.index != widget.index && !reduceMotion(context)) _c.forward(from: 0);
+  }
+
+  @override
+  void dispose() {
+    _curve.dispose();
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => FadeTransition(
+        opacity: _curve,
+        child: SlideTransition(
+          position: Tween(begin: const Offset(0, 0.02), end: Offset.zero).animate(_curve),
+          child: IndexedStack(index: widget.index, children: widget.children),
+        ),
+      );
 }

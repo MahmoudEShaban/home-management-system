@@ -1,9 +1,11 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lottie/lottie.dart';
 
 import '../data/community.dart';
 import '../data/google_auth.dart';
+import '../data/phone_account.dart';
 import '../data/providers.dart';
 import '../l10n/strings.dart';
 import 'common.dart';
@@ -20,7 +22,12 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   final _form = GlobalKey<FormState>();
   final _email = TextEditingController();
   final _password = TextEditingController();
+  final _phone = TextEditingController();
+  final _firstName = TextEditingController();
+  final _lastName = TextEditingController();
+  final _contactEmail = TextEditingController();
   bool _register = false;
+  bool _usePhone = false;
   String _role = kRoleManager;
   bool _busy = false;
 
@@ -28,6 +35,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   void dispose() {
     _email.dispose();
     _password.dispose();
+    _phone.dispose();
+    _firstName.dispose();
+    _lastName.dispose();
+    _contactEmail.dispose();
     super.dispose();
   }
 
@@ -38,7 +49,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     try {
       await action();
     } on FirebaseAuthException catch (e) {
-      if (mounted) toast(context, e.message ?? e.code);
+      if (mounted) toast(context, _authMessage(e));
     } catch (e) {
       if (mounted) toast(context, '$e');
     } finally {
@@ -46,9 +57,44 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     }
   }
 
+  /// Friendlier messages for the common sign-in errors, phone accounts
+  /// included (they use a hidden sign-in address).
+  String _authMessage(FirebaseAuthException e) {
+    final t = context.t;
+    return switch (e.code) {
+      'email-already-in-use' => _usePhone ? t.phoneAlreadyRegistered : t.emailAlreadyRegistered,
+      'invalid-credential' || 'wrong-password' || 'user-not-found' || 'invalid-email' =>
+        _usePhone ? t.phoneOrPasswordWrong : t.emailOrPasswordWrong,
+      'weak-password' => t.passwordTooShort,
+      'too-many-requests' => t.tooManyAttempts,
+      'network-request-failed' => t.noInternet,
+      _ => e.message ?? e.code,
+    };
+  }
+
   Future<void> _submitEmail() async {
     if (!_form.currentState!.validate()) return;
     final auth = ref.read(firebaseAuthProvider);
+    if (_usePhone) {
+      final digits = normalizePhone(_phone.text)!;
+      final db = ref.read(firestoreProvider);
+      await _run(() async {
+        if (_register) {
+          await registerWithPhone(auth, db,
+              phoneDigits: digits,
+              password: _password.text,
+              details: AccountDetails(
+                firstName: _firstName.text.trim(),
+                lastName: _lastName.text.trim(),
+                email: _contactEmail.text.trim(),
+                phone: digits,
+              ));
+        } else {
+          await signInWithPhone(auth, phoneDigits: digits, password: _password.text);
+        }
+      });
+      return;
+    }
     await _run(() async {
       if (_register) {
         await auth.createUserWithEmailAndPassword(
@@ -69,6 +115,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       });
 
   Future<void> _reset() async {
+    if (_usePhone) {
+      // Phone accounts have no mailbox behind their sign-in address.
+      toast(context, context.t.phoneResetHint);
+      return;
+    }
     final email = _email.text.trim();
     if (email.isEmpty) {
       toast(context, '${context.t.email}: ${context.t.requiredField}');
@@ -98,17 +149,19 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Container(
-                      width: 72,
-                      height: 72,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: cs.primaryContainer,
-                        borderRadius: BorderRadius.circular(20),
+                    Entrance(
+                      offset: 0,
+                      scale: 0.6,
+                      child: SizedBox(
+                        height: 120,
+                        child: Lottie.asset(
+                          'assets/animations/onboarding_buildings.json',
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, _, _) => Icon(Icons.apartment, size: 64, color: cs.primary),
+                        ),
                       ),
-                      child: Icon(Icons.apartment, size: 40, color: cs.onPrimaryContainer),
                     ),
-                    gap16,
+                    gap8,
                     Text(t.appName,
                         textAlign: TextAlign.center,
                         style: Theme.of(context)
@@ -153,17 +206,97 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                       const Expanded(child: Divider()),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: Text(t.email, style: TextStyle(color: cs.outline)),
+                        child: Text(t.orSignInWith, style: TextStyle(color: cs.outline)),
                       ),
                       const Expanded(child: Divider()),
                     ]),
-                    const SizedBox(height: 24),
-                    TextFormField(
-                      controller: _email,
-                      keyboardType: TextInputType.emailAddress,
-                      autofillHints: const [AutofillHints.email],
-                      decoration: InputDecoration(labelText: t.email),
-                      validator: requiredValidator(context),
+                    gap16,
+                    SegmentedButton<bool>(
+                      showSelectedIcon: false,
+                      segments: [
+                        ButtonSegment(value: false, icon: const Icon(Icons.alternate_email), label: Text(t.email)),
+                        ButtonSegment(value: true, icon: const Icon(Icons.phone_iphone), label: Text(t.phoneNumber)),
+                      ],
+                      selected: {_usePhone},
+                      onSelectionChanged: (v) => setState(() => _usePhone = v.first),
+                    ),
+                    gap16,
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 250),
+                      transitionBuilder: (child, a) => FadeTransition(
+                        opacity: a,
+                        child: SizeTransition(sizeFactor: a, axisAlignment: -1, child: child),
+                      ),
+                      child: _usePhone
+                          ? TextFormField(
+                              key: const ValueKey('phone'),
+                              controller: _phone,
+                              keyboardType: TextInputType.phone,
+                              autofillHints: const [AutofillHints.telephoneNumber],
+                              decoration: InputDecoration(
+                                labelText: t.phoneNumber,
+                                hintText: '01001234567',
+                                helperText: t.phoneFormatHint,
+                                prefixIcon: const Icon(Icons.phone_iphone),
+                              ),
+                              validator: (v) => (v ?? '').trim().isEmpty
+                                  ? t.requiredField
+                                  : normalizePhone(v!) == null
+                                      ? t.invalidPhone
+                                      : null,
+                            )
+                          : TextFormField(
+                              key: const ValueKey('email'),
+                              controller: _email,
+                              keyboardType: TextInputType.emailAddress,
+                              autofillHints: const [AutofillHints.email],
+                              decoration: InputDecoration(labelText: t.email, prefixIcon: const Icon(Icons.alternate_email)),
+                              validator: requiredValidator(context),
+                            ),
+                    ),
+                    // Phone sign-up also asks for the person's details.
+                    AnimatedSize(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeOutCubic,
+                      alignment: Alignment.topCenter,
+                      child: _usePhone && _register
+                          ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                              gap12,
+                              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                Expanded(
+                                  child: TextFormField(
+                                    controller: _firstName,
+                                    textCapitalization: TextCapitalization.words,
+                                    autofillHints: const [AutofillHints.givenName],
+                                    decoration: InputDecoration(labelText: t.firstName),
+                                    validator: requiredValidator(context),
+                                  ),
+                                ),
+                                gap12,
+                                Expanded(
+                                  child: TextFormField(
+                                    controller: _lastName,
+                                    textCapitalization: TextCapitalization.words,
+                                    autofillHints: const [AutofillHints.familyName],
+                                    decoration: InputDecoration(labelText: t.lastName),
+                                    validator: requiredValidator(context),
+                                  ),
+                                ),
+                              ]),
+                              gap12,
+                              TextFormField(
+                                controller: _contactEmail,
+                                keyboardType: TextInputType.emailAddress,
+                                autofillHints: const [AutofillHints.email],
+                                decoration: InputDecoration(labelText: t.email, prefixIcon: const Icon(Icons.alternate_email)),
+                                validator: (v) {
+                                  final s = (v ?? '').trim();
+                                  if (s.isEmpty) return t.requiredField;
+                                  return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(s) ? null : t.invalidEmail;
+                                },
+                              ),
+                            ])
+                          : const SizedBox(width: double.infinity),
                     ),
                     gap12,
                     TextFormField(
@@ -184,10 +317,16 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                     FilledButton(
                       onPressed: _busy ? null : _submitEmail,
                       style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
-                      child: _busy
-                          ? const SizedBox(
-                              width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2))
-                          : Text(_register ? t.signUp : t.signIn),
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 200),
+                        child: _busy
+                            ? const SizedBox(
+                                key: ValueKey('busy'),
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(strokeWidth: 2))
+                            : Text(_register ? t.signUp : t.signIn, key: ValueKey(_register)),
+                      ),
                     ),
                     gap8,
                     TextButton(

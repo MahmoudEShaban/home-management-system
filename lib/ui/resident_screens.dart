@@ -9,6 +9,7 @@ import '../data/google_auth.dart';
 import '../data/models.dart';
 import '../data/local_alerts.dart';
 import '../data/notifications.dart';
+import '../data/phone_account.dart';
 import '../data/providers.dart';
 import '../data/rent_logic.dart';
 import '../l10n/strings.dart';
@@ -85,10 +86,30 @@ class _JoinBuildingScreenState extends ConsumerState<JoinBuildingScreen> {
   final _form = GlobalKey<FormState>();
   final _code = TextEditingController();
   late final _name = TextEditingController(text: ref.read(authStateProvider).value?.displayName ?? '');
-  final _phone = TextEditingController();
+  late final _phone =
+      TextEditingController(text: displayPhone(phoneOfUser(ref.read(authStateProvider).value) ?? ''));
+  bool _prefilled = false;
+
+  /// Fill name / phone from the details given at sign-up, once they load.
+  void _prefill(AccountDetails a) {
+    if (_prefilled) return;
+    _prefilled = true;
+    if (_name.text.trim().isEmpty && a.fullName.isNotEmpty) _name.text = a.fullName;
+    if (_phone.text.trim().isEmpty && a.phone.isNotEmpty) _phone.text = displayPhone(a.phone);
+  }
   BuildingCode? _building;
   String? _unitId;
   bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Not in build(): changing a text field while building isn't allowed.
+    ref.listenManual<AsyncValue<AccountDetails>>(accountDetailsProvider, (_, next) {
+      final a = next.value;
+      if (a != null && (a.fullName.isNotEmpty || a.phone.isNotEmpty)) _prefill(a);
+    }, fireImmediately: true);
+  }
 
   @override
   void dispose() {
@@ -136,7 +157,10 @@ class _JoinBuildingScreenState extends ConsumerState<JoinBuildingScreen> {
             unitName: flat.name,
             name: _name.text.trim(),
             phone: _phone.text.trim(),
-            email: user.email ?? '',
+            // Phone accounts sign in with a hidden address; use the real email.
+            email: phoneOfUser(user) != null
+                ? (ref.read(accountDetailsProvider).value?.email ?? '')
+                : (user.email ?? ''),
             createdAt: DateTime.now(),
           ));
     } catch (e) {
@@ -324,7 +348,7 @@ class _ResidentHomeState extends ConsumerState<ResidentHome> {
         ]),
         actions: _residentActions(context, ref),
       ),
-      body: IndexedStack(
+      body: FadeIndexedStack(
           index: _index, children: const [_DuesTab(), _ExpensesTab(), FlatExpensesTab(), _InvoicesTab()]),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
@@ -433,7 +457,9 @@ class _DuesTab extends ConsumerWidget {
               ),
             ]),
             const SizedBox(height: 4),
-            Text(m(due.total),
+            AnimatedNumber(
+                value: due.total,
+                format: m,
                 style: Theme.of(context)
                     .textTheme
                     .headlineMedium

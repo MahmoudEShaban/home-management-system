@@ -189,15 +189,27 @@ class _HeroCard extends StatelessWidget {
     final t = context.t;
     final cs = Theme.of(context).colorScheme;
     final onHero = cs.onPrimary;
-    return Container(
+    return Entrance(
+      scale: 0.96,
+      child: Container(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: cs.primary, borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: AlignmentDirectional.topStart,
+          end: AlignmentDirectional.bottomEnd,
+          colors: [cs.primary, Color.lerp(cs.primary, cs.tertiary, 0.45)!],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: cs.primary.withValues(alpha: 0.25), blurRadius: 18, offset: const Offset(0, 8))],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(t.duesThisMonth, style: TextStyle(color: onHero.withValues(alpha: 0.8))),
           const SizedBox(height: 4),
-          Text(money(total),
+          AnimatedNumber(
+              value: total,
+              format: money,
               style: Theme.of(context)
                   .textTheme
                   .headlineMedium
@@ -206,19 +218,21 @@ class _HeroCard extends StatelessWidget {
           Text(t.acrossFlats(flats), style: TextStyle(color: onHero.withValues(alpha: 0.75), fontSize: 12)),
           const SizedBox(height: 16),
           Row(children: [
-            Expanded(child: _heroFigure(t.monthlyFees, money(fixed), onHero)),
-            Expanded(child: _heroFigure(t.sharedExpenses, money(shared), onHero)),
+            Expanded(child: _heroFigure(t.monthlyFees, fixed, onHero)),
+            Expanded(child: _heroFigure(t.sharedExpenses, shared, onHero)),
           ]),
         ],
+      ),
       ),
     );
   }
 
-  Widget _heroFigure(String label, String value, Color color) => Column(
+  Widget _heroFigure(String label, double value, Color color) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label, style: TextStyle(color: color.withValues(alpha: 0.75), fontSize: 12)),
-          Text(value, style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 16)),
+          AnimatedNumber(
+              value: value, format: money, style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 16)),
         ],
       );
 }

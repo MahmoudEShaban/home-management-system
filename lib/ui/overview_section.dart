@@ -77,7 +77,8 @@ class OverviewSection extends ConsumerWidget {
             icon: Icons.trending_down,
             color: const Color(0xFFC62828),
             label: t.expenses,
-            value: formatMoney(o.expenses),
+            number: o.expenses,
+            format: formatMoney,
             caption: periodLabel,
           ),
         ),
@@ -87,7 +88,8 @@ class OverviewSection extends ConsumerWidget {
             icon: Icons.trending_up,
             color: const Color(0xFF2E7D32),
             label: t.income,
-            value: formatMoney(o.income),
+            number: o.income,
+            format: formatMoney,
             caption: periodLabel,
           ),
         ),
@@ -99,7 +101,8 @@ class OverviewSection extends ConsumerWidget {
             icon: Icons.warning_amber_rounded,
             color: o.late.isEmpty ? cs.primary : const Color(0xFFB26A00),
             label: t.lateFlats,
-            value: '${o.late.length}',
+            number: o.late.length.toDouble(),
+            format: (v) => '${v.round()}',
             caption: o.late.isEmpty
                 ? t.noLateFlats
                 : formatMoney(o.late.fold<double>(0, (s, l) => s + l.outstanding)),
@@ -112,7 +115,8 @@ class OverviewSection extends ConsumerWidget {
             icon: Icons.savings_outlined,
             color: o.fund < 0 ? cs.error : cs.primary,
             label: t.fundBalance,
-            value: formatMoney(o.fund),
+            number: o.fund,
+            format: formatMoney,
             caption: t.fundCaption,
           ),
         ),
@@ -149,14 +153,16 @@ class _Box extends StatelessWidget {
     required this.icon,
     required this.color,
     required this.label,
-    required this.value,
+    required this.number,
+    required this.format,
     required this.caption,
     this.onTap,
   });
   final IconData icon;
   final Color color;
   final String label;
-  final String value;
+  final double number;
+  final String Function(double) format;
   final String caption;
   final VoidCallback? onTap;
 
@@ -186,7 +192,9 @@ class _Box extends StatelessWidget {
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: AlignmentDirectional.centerStart,
-            child: Text(value,
+            child: AnimatedNumber(
+                value: number,
+                format: format,
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800, color: color)),
           ),
           const SizedBox(height: 2),

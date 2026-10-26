@@ -5,6 +5,7 @@ import '../data/backup_service.dart';
 import '../data/community.dart';
 import '../data/google_auth.dart';
 import '../data/models.dart';
+import '../data/phone_account.dart';
 import '../data/local_alerts.dart';
 import '../data/providers.dart';
 import '../l10n/strings.dart';
@@ -106,11 +107,22 @@ class SettingsScreen extends ConsumerWidget {
           Panel(
             padding: EdgeInsets.zero,
             child: Column(children: [
-              ListTile(
-                leading: const Icon(Icons.person_outline),
-                title: Text(user?.displayName?.isNotEmpty == true ? user!.displayName! : (user?.email ?? '')),
-                subtitle: user?.displayName?.isNotEmpty == true ? Text(user?.email ?? '') : null,
-              ),
+              Builder(builder: (context) {
+                // Phone accounts sign in with a hidden address: show the
+                // number and the email given at sign-up instead.
+                final phone = phoneOfUser(user);
+                final account = ref.watch(accountDetailsProvider).value ?? const AccountDetails();
+                final name = user?.displayName?.isNotEmpty == true ? user!.displayName! : account.fullName;
+                final contact = [
+                  if (phone != null) displayPhone(phone) else user?.email ?? '',
+                  if (phone != null && account.email.isNotEmpty) account.email,
+                ].where((s) => s.isNotEmpty).join(' · ');
+                return ListTile(
+                  leading: Icon(phone != null ? Icons.phone_iphone : Icons.person_outline),
+                  title: Text(name.isNotEmpty ? name : contact),
+                  subtitle: name.isNotEmpty && contact.isNotEmpty ? Text(contact) : null,
+                );
+              }),
               if (ref.watch(hasBothRolesProvider)) ...[
                 const Divider(height: 1),
                 ListTile(

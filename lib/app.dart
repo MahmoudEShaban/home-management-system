@@ -127,7 +127,7 @@ class _HomeShellState extends ConsumerState<HomeShell> with WidgetsBindingObserv
       const InvoicesScreen(),
     ];
     return Scaffold(
-      body: IndexedStack(index: _index, children: pages),
+      body: FadeIndexedStack(index: _index, children: pages),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: (i) => setState(() => _index = i),
