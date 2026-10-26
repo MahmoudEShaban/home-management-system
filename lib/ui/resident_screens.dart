@@ -27,6 +27,7 @@ import 'dues_screen.dart' show dueStateColor;
 import 'flat_expenses_screen.dart';
 import 'overview_section.dart';
 import 'split_editor.dart';
+import 'welcome_header.dart';
 
 /// Entry point for resident accounts: join → waiting → resident home.
 class ResidentGate extends ConsumerWidget {
@@ -447,8 +448,9 @@ class _DuesTab extends ConsumerWidget {
         );
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
       children: [
+        const WelcomeHeader(),
         const MonthSwitcher(),
         Container(
           padding: const EdgeInsets.all(20),

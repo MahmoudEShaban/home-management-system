@@ -500,6 +500,12 @@ class L10n {
   String signInPhoneStays(String phone) => _tr(
       'This updates the number shown to your building manager. You still sign in with $phone.',
       'سيتم تحديث الرقم الظاهر لمدير العقار. ستظل تسجّل الدخول بالرقم $phone.');
+  // Home page welcome
+  String get welcome => _tr('Welcome', 'أهلًا بك');
+  String welcomeName(String name) => _tr('Welcome, $name', 'أهلًا، $name');
+  String get goodMorning => _tr('Good morning', 'صباح الخير');
+  String get goodAfternoon => _tr('Good afternoon', 'نهارك سعيد');
+  String get goodEvening => _tr('Good evening', 'مساء الخير');
   String get stillLoading => _tr('This is taking longer than usual', 'التحميل يستغرق وقتاً أطول من المعتاد');
   String get stillLoadingHint => _tr(
       'Check your internet connection, then try again. If it keeps happening, sign out and sign in again.',

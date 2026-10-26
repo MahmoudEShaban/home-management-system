@@ -8,6 +8,7 @@ import '../data/providers.dart';
 import '../data/rent_logic.dart';
 import '../l10n/strings.dart';
 import 'status_requests_screen.dart' show StatusRequestsBanner;
+import 'welcome_header.dart';
 import 'common.dart';
 import 'community_screens.dart';
 import 'dues_screen.dart';
@@ -67,6 +68,7 @@ class DashboardScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
         children: [
+          const WelcomeHeader(),
           const MonthSwitcher(),
           if (properties.hasValue && properties.value!.isEmpty)
             Padding(
