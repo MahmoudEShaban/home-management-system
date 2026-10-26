@@ -3,7 +3,8 @@ rules_version = '2';
 // Managers own everything under users/{managerUid}. Residents linked to a flat
 // (users/{managerUid}/members/{residentUid}) can read only their building and
 // its flats, the building's expenses and their own flat's invoices, and can
-// set their flat as occupied or closed. Several residents can share a flat. Residents
+// ask the manager to mark their flat occupied or closed. Several residents
+// can share a flat. Residents
 // suggest expenses in expenseProposals; only the manager can approve them.
 // Notifications go to inbox/{uid}; each phone shows new ones itself.
 service cloud.firestore {
@@ -15,9 +16,6 @@ service cloud.firestore {
     }
     function isMember(managerId) { return signedIn() && exists(memberPath(managerId)); }
     function member(managerId) { return get(memberPath(managerId)).data; }
-    function buildingFee(managerId, propertyId, field) {
-      return get(/databases/$(database)/documents/users/$(managerId)/properties/$(propertyId)).data.get(field, -1);
-    }
 
     match /users/{managerId} {
       allow read, write: if isOwner(managerId);
@@ -40,17 +38,21 @@ service cloud.firestore {
       match /units/{unitId} {
         allow read: if isMember(managerId)
           && resource.data.propertyId == member(managerId).propertyId;
-        // A resident linked to this flat can mark it occupied or closed.
-        // Only the status (and the fixed cost, moved to the building's
-        // default for the new status) may change.
-        allow update: if isMember(managerId)
+      }
+      // Residents ask to mark their flat occupied / not occupied; only the
+      // manager changes the flat (when approving). One request per flat,
+      // stored under the flat's id.
+      match /statusRequests/{unitId} {
+        allow read: if isMember(managerId) && member(managerId).unitId == unitId;
+        allow create, update: if isMember(managerId)
           && member(managerId).unitId == unitId
-          && request.resource.data.diff(resource.data).affectedKeys()
-               .hasOnly(['status', 'monthlyFee', 'statusChangedBy', 'statusChangedAt'])
-          && request.resource.data.status in ['ownerResident', 'closed']
-          && (request.resource.data.monthlyFee == resource.data.monthlyFee
-              || request.resource.data.monthlyFee == buildingFee(managerId, resource.data.propertyId, 'feeOccupied')
-              || request.resource.data.monthlyFee == buildingFee(managerId, resource.data.propertyId, 'feeClosed'));
+          && request.resource.data.unitId == unitId
+          && request.resource.data.propertyId == member(managerId).propertyId
+          && request.resource.data.residentUid == request.auth.uid
+          && request.resource.data.status == 'pending'
+          && request.resource.data.toStatus in ['ownerResident', 'closed'];
+        allow delete: if isMember(managerId) && member(managerId).unitId == unitId
+          && resource.data.status == 'pending';
       }
       match /expenses/{expenseId} {
         allow read: if isMember(managerId)

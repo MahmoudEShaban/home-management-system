@@ -409,8 +409,8 @@ class L10n {
   String get flatOccupied => _tr('Living here', 'نسكن بها');
   String get flatClosed => _tr('Not occupied', 'غير مشغولة');
   String get flatStatusHint => _tr(
-      'Choose whether someone lives in the flat. Your building manager is notified.',
-      'اختر إن كان أحد يسكن الشقة. سيتم إبلاغ مدير العقار.');
+      'Choose whether someone lives in the flat. The change needs your building manager\'s approval.',
+      'اختر إن كان أحد يسكن الشقة. التغيير يحتاج موافقة مدير العقار.');
   String flatStatusFees(String occupied, String closed) => _tr(
       'Fixed monthly cost: $occupied when occupied, $closed when not occupied.',
       'التكلفة الشهرية الثابتة: $occupied عند السكن، و$closed عند عدم الإشغال.');
@@ -460,6 +460,25 @@ class L10n {
   String get takePhoto => _tr('Take a photo', 'التقاط صورة');
   String get chooseFromGallery => _tr('Choose from gallery', 'اختيار من المعرض');
   String get photoUnreadable => _tr('This photo couldn\'t be read. Try another one.', 'تعذرت قراءة هذه الصورة. جرّب صورة أخرى.');
+  // Flat status change requests
+  String get statusRequestSent =>
+      _tr('Request sent. Your building manager will approve the change.', 'تم إرسال الطلب. سيوافق مدير العقار على التغيير.');
+  String get statusRequestCancelled => _tr('Request withdrawn', 'تم سحب الطلب');
+  String statusRequestWaiting(String to) =>
+      _tr('Waiting for your building manager to approve: $to', 'في انتظار موافقة مدير العقار: $to');
+  String statusRequestDeclined(String to) =>
+      _tr('Your request to change to "$to" was declined.', 'تم رفض طلب التغيير إلى "$to".');
+  String statusRequestsWaiting(int n) => _tr(
+      n == 1 ? '1 flat status change waiting' : '$n flat status changes waiting',
+      '$n طلب تغيير حالة شقة في الانتظار');
+  String get statusRequests => _tr('Flat status requests', 'طلبات تغيير حالة الشقق');
+  String get statusRequestsHint => _tr(
+      'Residents asked to change whether their flat is occupied. Approving updates the flat and its fixed monthly cost.',
+      'طلب السكان تغيير حالة إشغال شققهم. الموافقة تحدّث الشقة وتكلفتها الشهرية الثابتة.');
+  String get noStatusRequests => _tr('No requests waiting', 'لا توجد طلبات في الانتظار');
+  String get declineStatusChange => _tr('Decline status change', 'رفض تغيير الحالة');
+  String get statusChangeApproved => _tr('Flat status updated', 'تم تحديث حالة الشقة');
+  String get statusChangeDeclined => _tr('Request declined', 'تم رفض الطلب');
   String get stillLoading => _tr('This is taking longer than usual', 'التحميل يستغرق وقتاً أطول من المعتاد');
   String get stillLoadingHint => _tr(
       'Check your internet connection, then try again. If it keeps happening, sign out and sign in again.',

@@ -783,24 +783,6 @@ final residentDuesPaymentsProvider = StreamProvider<List<DuesPayment>>((ref) {
       .map((s) => s.docs.map((d) => DuesPayment.fromMap(d.id, d.data())).toList());
 });
 
-/// Resident: say whether they live in the flat (occupied) or it is closed.
-/// If the flat's fixed cost was the building's default for the old status,
-/// it moves to the default for the new one (same as when the manager
-/// changes it). Firestore rules only let a linked resident change these
-/// fields of their own flat.
-Future<void> setFlatStatusAsResident(
-    FirebaseFirestore db, JoinRequest m, Unit unit, Property? property, UnitStatus status) {
-  final update = <String, dynamic>{
-    'status': status.name,
-    'statusChangedBy': m.name,
-    'statusChangedAt': DateTime.now(),
-  };
-  if (property != null && unit.monthlyFee == property.defaultFee(unit.status)) {
-    update['monthlyFee'] = property.defaultFee(status);
-  }
-  return db.collection('users').doc(m.managerUid).collection('units').doc(unit.id).update(update);
-}
-
 /// Resident: say "I've paid" for their flat's dues for a month.
 Future<void> claimDuesPayment(FirebaseFirestore db, JoinRequest m, DuesPayment p) => db
     .collection('users')

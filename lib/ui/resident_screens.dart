@@ -13,6 +13,7 @@ import '../data/notifications.dart';
 import '../data/phone_account.dart';
 import '../data/providers.dart';
 import '../data/rent_logic.dart';
+import '../data/status_requests.dart';
 import '../l10n/strings.dart';
 import 'attachments_widgets.dart';
 import 'common.dart';
@@ -1178,21 +1179,48 @@ class _FlatStatusPanel extends ConsumerStatefulWidget {
 class _FlatStatusPanelState extends ConsumerState<_FlatStatusPanel> {
   bool _busy = false;
 
-  Future<void> _set(UnitStatus status) async {
+  UnitStatus get _current =>
+      // A flat marked "rented" by the manager shows as occupied here.
+      widget.unit.status == UnitStatus.closed ? UnitStatus.closed : UnitStatus.ownerResident;
+
+  /// Sends a request; the flat only changes once the manager approves.
+  Future<void> _request(UnitStatus status) async {
     final t = context.t;
     final m = ref.read(membershipProvider);
-    if (m == null || status == widget.unit.status) return;
+    if (m == null) return;
+    final db = ref.read(firestoreProvider);
     setState(() => _busy = true);
     try {
-      await setFlatStatusAsResident(ref.read(firestoreProvider), m, widget.unit, widget.property, status);
-      unawaited(notifyFlatStatusChanged(ref,
+      if (status == _current) {
+        // Back to the current status: just withdraw the waiting request.
+        await cancelFlatStatusRequest(db, m);
+        if (mounted) toast(context, t.statusRequestCancelled);
+        return;
+      }
+      await requestFlatStatus(db, m, widget.unit, status);
+      unawaited(notifyFlatStatusRequested(ref,
               managerUid: m.managerUid,
               residentName: m.name,
               unitName: widget.unit.name,
               occupied: status == UnitStatus.ownerResident,
               arabic: t.ar)
           .catchError((Object e) => debugPrint('Status notice failed: $e')));
-      if (mounted) toast(context, t.flatStatusSaved);
+      if (mounted) toast(context, t.statusRequestSent);
+    } catch (e) {
+      if (mounted) toast(context, '${t.somethingWrong}: $e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _cancel() async {
+    final m = ref.read(membershipProvider);
+    if (m == null) return;
+    final t = context.t;
+    setState(() => _busy = true);
+    try {
+      await cancelFlatStatusRequest(ref.read(firestoreProvider), m);
+      if (mounted) toast(context, t.statusRequestCancelled);
     } catch (e) {
       if (mounted) toast(context, '${t.somethingWrong}: $e');
     } finally {
@@ -1204,9 +1232,15 @@ class _FlatStatusPanelState extends ConsumerState<_FlatStatusPanel> {
   Widget build(BuildContext context) {
     final t = context.t;
     final cs = Theme.of(context).colorScheme;
-    // A flat marked "rented" by the manager shows as occupied here.
-    final current = widget.unit.status == UnitStatus.closed ? UnitStatus.closed : UnitStatus.ownerResident;
+    final current = _current;
     final p = widget.property;
+    final req = ref.watch(myFlatStatusRequestProvider).value;
+    // Only show a request that is still relevant: waiting, or declined for
+    // the status the flat still doesn't have.
+    final pending = req != null && req.isPending && req.toStatus != current ? req : null;
+    final declined = req != null && req.status == RequestStatus.rejected && req.toStatus != current ? req : null;
+    String label(UnitStatus s) => s == UnitStatus.closed ? t.flatClosed : t.flatOccupied;
+
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       SectionTitle(t.myFlatStatus),
       Panel(
@@ -1221,8 +1255,45 @@ class _FlatStatusPanelState extends ConsumerState<_FlatStatusPanel> {
               ButtonSegment(
                   value: UnitStatus.closed, icon: const Icon(Icons.lock_outline), label: Text(t.flatClosed)),
             ],
+            // Shows the approved status; a waiting request is shown below.
             selected: {current},
-            onSelectionChanged: _busy ? null : (v) => _set(v.first),
+            onSelectionChanged: _busy ? null : (v) => _request(v.first),
+          ),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 250),
+            alignment: Alignment.topCenter,
+            child: pending != null
+                ? Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Container(
+                      padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
+                      decoration: BoxDecoration(
+                        color: cs.tertiaryContainer,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(children: [
+                        Icon(Icons.hourglass_top, size: 18, color: cs.onTertiaryContainer),
+                        gap8,
+                        Expanded(
+                          child: Text(t.statusRequestWaiting(label(pending.toStatus)),
+                              style: TextStyle(color: cs.onTertiaryContainer)),
+                        ),
+                        TextButton(onPressed: _busy ? null : _cancel, child: Text(t.cancel)),
+                      ]),
+                    ),
+                  )
+                : declined != null
+                    ? Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: Text(
+                          [
+                            t.statusRequestDeclined(label(declined.toStatus)),
+                            if (declined.decisionNote.isNotEmpty) '“${declined.decisionNote}”',
+                          ].join(' '),
+                          style: TextStyle(color: cs.error, fontSize: 12),
+                        ),
+                      )
+                    : const SizedBox(width: double.infinity),
           ),
           gap8,
           Text(

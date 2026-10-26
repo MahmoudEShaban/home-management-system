@@ -201,8 +201,8 @@ Future<void> notifyProposalSubmitted(WidgetRef ref, ExpenseProposal p, {required
 }
 
 /// Manager → resident: their submission was approved or declined.
-/// Resident → manager: the flat's status changed (occupied / closed).
-Future<void> notifyFlatStatusChanged(WidgetRef ref,
+/// Resident → manager: asks to mark the flat occupied / not occupied.
+Future<void> notifyFlatStatusRequested(WidgetRef ref,
     {required String managerUid,
     required String residentName,
     required String unitName,
@@ -211,12 +211,35 @@ Future<void> notifyFlatStatusChanged(WidgetRef ref,
   final notifier = ref.read(notifierProvider);
   if (notifier == null) return;
   await notifier.sendSame([managerUid], InboxItem(
-    title: arabic ? 'تغيرت حالة شقة' : 'Flat status changed',
+    title: arabic ? 'طلب تغيير حالة شقة' : 'Flat status change requested',
     body: arabic
-        ? '$unitName · ${occupied ? 'مشغولة (يسكنها المالك)' : 'مغلقة'} · $residentName'
-        : '$unitName · ${occupied ? 'Occupied' : 'Closed'} · $residentName',
-    type: NoticeType.decision,
+        ? '$unitName · ${occupied ? 'نسكن بها' : 'غير مشغولة'} · $residentName'
+        : '$unitName · ${occupied ? 'Living here' : 'Not occupied'} · $residentName',
+    type: NoticeType.proposal,
     senderName: residentName,
+    createdAt: DateTime.now(),
+  ));
+}
+
+/// Manager → the flat's residents: decision on a status change request.
+Future<void> notifyFlatStatusDecision(WidgetRef ref,
+    {required Iterable<String> residentUids,
+    required String unitName,
+    required bool occupied,
+    required bool approved,
+    String note = '',
+    required String managerName,
+    required bool arabic}) async {
+  final notifier = ref.read(notifierProvider);
+  if (notifier == null || residentUids.isEmpty) return;
+  final state = arabic ? (occupied ? 'نسكن بها' : 'غير مشغولة') : (occupied ? 'Living here' : 'Not occupied');
+  await notifier.sendSame(residentUids, InboxItem(
+    title: approved
+        ? (arabic ? 'تمت الموافقة على تغيير حالة الشقة' : 'Flat status change approved')
+        : (arabic ? 'تم رفض تغيير حالة الشقة' : 'Flat status change declined'),
+    body: [unitName, state, if (note.isNotEmpty) note].join(' · '),
+    type: NoticeType.decision,
+    senderName: managerName,
     createdAt: DateTime.now(),
   ));
 }

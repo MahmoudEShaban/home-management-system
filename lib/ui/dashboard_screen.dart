@@ -7,6 +7,7 @@ import '../data/models.dart';
 import '../data/providers.dart';
 import '../data/rent_logic.dart';
 import '../l10n/strings.dart';
+import 'status_requests_screen.dart' show StatusRequestsBanner;
 import 'common.dart';
 import 'community_screens.dart';
 import 'dues_screen.dart';
@@ -84,6 +85,7 @@ class DashboardScreen extends ConsumerWidget {
             ),
           const JoinRequestsBanner(),
           const ProposalsBanner(),
+          const StatusRequestsBanner(),
           _HeroCard(
             total: fixedTotal + sharedTotal,
             fixed: fixedTotal,
