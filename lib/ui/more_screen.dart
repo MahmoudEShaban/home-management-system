@@ -12,6 +12,7 @@ import '../data/providers.dart';
 import '../data/share_payments.dart';
 import '../l10n/strings.dart';
 import 'attachments_widgets.dart';
+import 'chat_screen.dart' show ChatButton;
 import 'common.dart';
 import 'community_screens.dart' show ExpenseApprovalsScreen;
 import 'onboarding_screen.dart' show onboardingDoneProvider;
@@ -125,6 +126,16 @@ class MoreScreen extends ConsumerWidget {
                 const Icon(Icons.chevron_right),
               ]),
               onTap: () => push(context, MaintenanceRequestsScreen(resident: resident)),
+            ),
+          ),
+          gap8,
+          Panel(
+            padding: EdgeInsets.zero,
+            child: ListTile(
+              leading: const Icon(Icons.forum_outlined),
+              title: Text(t.buildingChat),
+              subtitle: Text(t.chatRetentionHint),
+              trailing: ChatButton(manager: !resident),
             ),
           ),
           SectionTitle(t.app),

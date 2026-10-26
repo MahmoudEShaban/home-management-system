@@ -9,6 +9,7 @@ import '../data/rent_logic.dart';
 import '../l10n/strings.dart';
 import 'status_requests_screen.dart' show StatusRequestsBanner;
 import 'welcome_header.dart';
+import 'chat_screen.dart' show ChatButton;
 import 'common.dart';
 import 'community_screens.dart';
 import 'dues_screen.dart';
@@ -51,6 +52,7 @@ class DashboardScreen extends ConsumerWidget {
       appBar: AppBar(
         title: Text(profileName.isEmpty ? t.appName : profileName),
         actions: [
+          const ChatButton(manager: true),
           const InboxBell(),
           if (ref.watch(hasBothRolesProvider))
             IconButton(

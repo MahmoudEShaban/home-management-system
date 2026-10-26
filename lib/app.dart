@@ -15,6 +15,7 @@ import 'ui/properties_screen.dart';
 import 'ui/resident_screens.dart';
 import 'ui/role_choice_screen.dart';
 import 'ui/more_screen.dart';
+import 'data/chat.dart' show chatCleanupProvider;
 import 'ui/common.dart';
 import 'ui/onboarding_screen.dart';
 
@@ -124,6 +125,8 @@ class _HomeShellState extends ConsumerState<HomeShell> with WidgetsBindingObserv
     final t = context.t;
     // Keep resident building codes up to date with flats and members.
     ref.watch(buildingCodeSyncProvider);
+    // Delete chat messages older than the retention period.
+    ref.watch(chatCleanupProvider);
     final pages = [
       DashboardScreen(onNavigate: (i) => setState(() => _index = i)),
       const PropertiesScreen(),

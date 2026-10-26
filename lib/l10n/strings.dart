@@ -595,6 +595,18 @@ class L10n {
   String get chooseRoleBody => _tr('How will you use the app?', 'كيف ستستخدم التطبيق؟');
   String get chooseRoleOnce => _tr(
       'You choose this once for your account.', 'يتم اختيار ذلك مرة واحدة لحسابك.');
+  // Building chat
+  String get buildingChat => _tr('Building chat', 'دردشة العقار');
+  String get buildingChats => _tr('Building chats', 'دردشات العقارات');
+  String get chatRetentionHint => _tr(
+      'For the manager and residents of this building. Messages are deleted after 3 days.',
+      'لمدير العقار وسكانه. تُحذف الرسائل بعد 3 أيام.');
+  String get noMessagesYet => _tr('No messages yet', 'لا توجد رسائل بعد');
+  String get chatEmpty => _tr('Say hello to your neighbours 👋', 'قل مرحبًا لجيرانك 👋');
+  String get typeMessage => _tr('Message', 'اكتب رسالة');
+  String get deleteMessageConfirm => _tr('Delete this message for everyone?', 'حذف هذه الرسالة للجميع؟');
+  String get today => _tr('Today', 'اليوم');
+  String get yesterday => _tr('Yesterday', 'أمس');
   String get stillLoading => _tr('This is taking longer than usual', 'التحميل يستغرق وقتاً أطول من المعتاد');
   String get stillLoadingHint => _tr(
       'Check your internet connection, then try again. If it keeps happening, sign out and sign in again.',

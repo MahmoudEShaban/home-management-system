@@ -16,6 +16,7 @@ import '../data/rent_logic.dart';
 import '../data/status_requests.dart';
 import '../l10n/strings.dart';
 import 'attachments_widgets.dart';
+import 'chat_screen.dart' show ChatButton;
 import 'common.dart';
 import 'invoice_pdf.dart';
 import 'inbox_screens.dart';
@@ -60,6 +61,7 @@ Future<void> _signOut(WidgetRef ref) async {
 }
 
 List<Widget> _residentActions(BuildContext context, WidgetRef ref) => [
+      if (ref.watch(membershipProvider) != null) const ChatButton(),
       if (ref.watch(membershipProvider) != null) const InboxBell(),
       if (ref.watch(hasBothRolesProvider))
         IconButton(
