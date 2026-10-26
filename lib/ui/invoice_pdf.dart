@@ -100,7 +100,11 @@ Future<Uint8List> buildInvoicePdf({
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
                 label(t.billTo),
-                value(billToName ?? unit?.name ?? '', bold: true),
+                value(
+                    invoice.isMaintenance && invoice.requestedByName.isNotEmpty
+                        ? invoice.requestedByName
+                        : (billToName ?? unit?.name ?? ''),
+                    bold: true),
                 if (unit != null || property != null)
                   value([unit?.name, property?.name].whereType<String>().join(' · ')),
                 if (property != null && property.address.isNotEmpty)
@@ -126,6 +130,49 @@ Future<Uint8List> buildInvoicePdf({
         ],
       ),
       pw.SizedBox(height: 24),
+
+      // Approved maintenance request: who asked, what, when, how much.
+      if (invoice.isMaintenance) ...[
+        pw.Container(
+          padding: const pw.EdgeInsets.all(12),
+          decoration: pw.BoxDecoration(
+            border: pw.Border.all(color: brand, width: 1),
+            borderRadius: pw.BorderRadius.circular(6),
+          ),
+          child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+            pw.Text(t.maintenanceRequest,
+                style: pw.TextStyle(color: brand, fontWeight: pw.FontWeight.bold, fontSize: 12)),
+            pw.SizedBox(height: 8),
+            pw.Row(children: [
+              pw.Expanded(
+                child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+                  label(t.submittedByLabel),
+                  value(invoice.requestedByName, bold: true),
+                ]),
+              ),
+              pw.Expanded(
+                child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+                  label(t.category),
+                  value(invoice.category == null ? '' : t.expenseCategory(invoice.category!)),
+                ]),
+              ),
+              pw.Expanded(
+                child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+                  label(t.date),
+                  value(invoice.workDate == null ? '' : d(invoice.workDate!)),
+                ]),
+              ),
+              pw.Expanded(
+                child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+                  label(t.totalCost),
+                  value(m(invoice.total), bold: true),
+                ]),
+              ),
+            ]),
+          ]),
+        ),
+        pw.SizedBox(height: 20),
+      ],
 
       // Items
       pw.Table(

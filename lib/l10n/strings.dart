@@ -607,6 +607,12 @@ class L10n {
   String get deleteMessageConfirm => _tr('Delete this message for everyone?', 'حذف هذه الرسالة للجميع؟');
   String get today => _tr('Today', 'اليوم');
   String get yesterday => _tr('Yesterday', 'أمس');
+  // Maintenance invoices
+  String get submittedByLabel => _tr('Submitted by', 'مقدم الطلب');
+  String get totalCost => _tr('Total cost', 'إجمالي التكلفة');
+  String maintenanceInvoiceNote(String name) => _tr(
+      'Approved maintenance request. Paid by $name; the other flats repay their shares to them.',
+      'طلب صيانة معتمد. دفعه $name، وتسدد باقي الشقق أنصبتها له.');
   String get stillLoading => _tr('This is taking longer than usual', 'التحميل يستغرق وقتاً أطول من المعتاد');
   String get stillLoadingHint => _tr(
       'Check your internet connection, then try again. If it keeps happening, sign out and sign in again.',

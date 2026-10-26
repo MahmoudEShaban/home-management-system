@@ -71,11 +71,13 @@ class _InvoicesScreenState extends ConsumerState<InvoicesScreen> {
                       inv.dueDate.isBefore(DateTime.now().subtract(const Duration(days: 1)));
                   return ListTile(
                     leading: CircleAvatar(
-                      child: Icon(Icons.receipt_long_outlined,
+                      child: Icon(inv.isMaintenance ? Icons.handyman_outlined : Icons.receipt_long_outlined,
                           color: overdue ? Theme.of(context).colorScheme.error : null),
                     ),
-                    title: Text('${inv.number} · ${memberNames(membersByUnit[inv.unitId]).isNotEmpty ? memberNames(membersByUnit[inv.unitId]) : unitById[inv.unitId]?.name ?? ''}'),
+                    title: Text('${inv.number} · ${inv.isMaintenance && inv.requestedByName.isNotEmpty ? inv.requestedByName : memberNames(membersByUnit[inv.unitId]).isNotEmpty ? memberNames(membersByUnit[inv.unitId]) : unitById[inv.unitId]?.name ?? ''}'),
                     subtitle: Text([
+                      if (inv.isMaintenance) t.maintenanceRequest,
+                      if (inv.isMaintenance && inv.category != null) t.expenseCategory(inv.category!),
                       unitById[inv.unitId]?.name,
                       propById[inv.propertyId]?.name,
                       context.fmtDate(inv.issueDate),
@@ -121,7 +123,9 @@ class InvoiceDetailScreen extends ConsumerWidget {
     }
     final unit = ref.watch(unitByIdProvider)[inv.unitId];
     final linkedNames = memberNames(ref.watch(membersByUnitProvider)[inv.unitId]);
-    final billTo = linkedNames.isNotEmpty ? linkedNames : unit?.name ?? '';
+    final billTo = inv.isMaintenance && inv.requestedByName.isNotEmpty
+        ? inv.requestedByName
+        : (linkedNames.isNotEmpty ? linkedNames : unit?.name ?? '');
     final property = ref.watch(propertyByIdProvider)[inv.propertyId];
     final profile = ref.watch(profileProvider).value ?? const BusinessProfile();
     final arabic = t.ar;
@@ -184,6 +188,19 @@ class InvoiceDetailScreen extends ConsumerWidget {
                 _kv(context, t.issueDate, context.fmtDate(inv.issueDate)),
                 _kv(context, t.dueDate, context.fmtDate(inv.dueDate)),
                 if (inv.period.isNotEmpty) _kv(context, t.forMonth, context.fmtPeriod(inv.period)),
+                if (inv.isMaintenance) ...[
+                  const Divider(height: 24),
+                  Row(children: [
+                    Icon(Icons.handyman_outlined, size: 18, color: Theme.of(context).colorScheme.primary),
+                    gap8,
+                    Text(t.maintenanceRequest, style: const TextStyle(fontWeight: FontWeight.w700)),
+                  ]),
+                  gap8,
+                  _kv(context, t.submittedByLabel, inv.requestedByName),
+                  if (inv.category != null) _kv(context, t.category, t.expenseCategory(inv.category!)),
+                  if (inv.workDate != null) _kv(context, t.date, context.fmtDate(inv.workDate!)),
+                  _kv(context, t.totalCost, money(ref, context, inv.total)),
+                ],
                 const Divider(height: 24),
                 for (final item in inv.items)
                   _kv(context, item.description, money(ref, context, item.amount)),

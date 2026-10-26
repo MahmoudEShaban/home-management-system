@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/attachments.dart';
+import '../data/maintenance_invoice.dart';
 import '../data/models.dart';
 import '../data/providers.dart';
 import '../l10n/strings.dart';
@@ -294,6 +295,23 @@ class _ExpenseFormState extends ConsumerState<ExpenseForm> {
           payToUnitId: _e?.payToUnitId ?? (_p?.isMaintenance == true ? _p!.unitId : ''),
         );
     final id = ref.read(expenseRepo).save(expense);
+    // Approved maintenance request: keep its invoice (created on approval,
+    // updated if the expense is edited later).
+    if (expense.paidByResident) {
+      final invoices = ref.read(invoicesProvider).value ?? const <Invoice>[];
+      final existing = invoices.where((i) => i.id == maintenanceInvoiceId(id)).firstOrNull;
+      final profile = ref.read(profileProvider).value ?? const BusinessProfile();
+      final title = _p?.title.isNotEmpty == true ? _p!.title : _notes.text.trim().split('\n').first;
+      ref.read(invoiceRepo).save(buildMaintenanceInvoice(
+            t: context.t,
+            expense: expense,
+            expenseId: id,
+            title: title,
+            number: '${profile.invoicePrefix}'
+                '${ref.read(userDocRepo).nextInvoiceNumber(invoices).toString().padLeft(4, '0')}',
+            existing: existing,
+          ));
+    }
     final arabic = context.t.ar;
     final profile = ref.read(profileProvider).value ?? const BusinessProfile();
     final managerName = profile.name.isEmpty ? context.t.roleManager : profile.name;
@@ -347,6 +365,7 @@ class _ExpenseFormState extends ConsumerState<ExpenseForm> {
               onPressed: () async {
                 if (await confirmDialog(context, t.deleteConfirm, confirmLabel: t.delete)) {
                   ref.read(expenseRepo).delete(_e!.id);
+                  if (_e!.paidByResident) ref.read(invoiceRepo).delete(maintenanceInvoiceId(_e!.id));
                   for (final id in _e!.attachmentIds) {
                     _attachments.delete(_photos.managerUid, id).catchError((Object e) => debugPrint('$e'));
                   }

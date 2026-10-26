@@ -578,6 +578,16 @@ class Invoice implements Entity {
   final InvoiceStatus status;
   final String notes;
 
+  /// '' for a normal invoice; 'maintenance' for the one created when a
+  /// resident's maintenance request is approved.
+  final String kind;
+  final String expenseId;
+  final String requestedByName;
+  final ExpenseCategory? category;
+  final DateTime? workDate;
+
+  bool get isMaintenance => kind == 'maintenance';
+
   Invoice({
     this.id = '',
     required this.number,
@@ -590,6 +600,11 @@ class Invoice implements Entity {
     required this.items,
     this.status = InvoiceStatus.unpaid,
     this.notes = '',
+    this.kind = '',
+    this.expenseId = '',
+    this.requestedByName = '',
+    this.category,
+    this.workDate,
   });
 
   double get total => items.fold(0, (sum, i) => sum + i.amount);
@@ -610,6 +625,11 @@ class Invoice implements Entity {
         status: InvoiceStatus.values.asNameMap()[m['status']] ??
             InvoiceStatus.unpaid,
         notes: _s(m['notes']),
+        kind: _s(m['kind']),
+        expenseId: _s(m['expenseId']),
+        requestedByName: _s(m['requestedByName']),
+        category: ExpenseCategory.values.asNameMap()[m['category']],
+        workDate: _dtn(m['workDate']),
       );
 
   @override
@@ -625,6 +645,11 @@ class Invoice implements Entity {
         'status': status.name,
         'total': total,
         'notes': notes,
+        if (kind.isNotEmpty) 'kind': kind,
+        if (expenseId.isNotEmpty) 'expenseId': expenseId,
+        if (requestedByName.isNotEmpty) 'requestedByName': requestedByName,
+        if (category != null) 'category': category!.name,
+        if (workDate != null) 'workDate': workDate!.millisecondsSinceEpoch,
       };
 
   Invoice withStatus(InvoiceStatus s) => Invoice(
@@ -639,6 +664,11 @@ class Invoice implements Entity {
         items: items,
         status: s,
         notes: notes,
+        kind: kind,
+        expenseId: expenseId,
+        requestedByName: requestedByName,
+        category: category,
+        workDate: workDate,
       );
 }
 
