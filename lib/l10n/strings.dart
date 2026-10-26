@@ -568,6 +568,30 @@ class L10n {
   String get mySpendingManagerHint => _tr(
       'Everything this flat paid: dues, maintenance shares, repairs and private expenses',
       'كل ما دفعته الشقة: المستحقات وأنصبة الصيانة والإصلاحات والمصروفات الخاصة');
+  // Paying maintenance shares per request
+  String get partlyPaid => _tr('Partly paid', 'مدفوع جزئيًا');
+  String get paymentConfirmedShort => _tr('Confirmed', 'مؤكد');
+  String paidSoFar(String paid, String owed) => _tr('Paid $paid of $owed', 'تم دفع $paid من $owed');
+  String get payShare => _tr('Pay', 'دفع');
+  String shareSummary(String owed, String paid, String left) =>
+      _tr('Your share $owed · paid $paid · left $left', 'نصيبك $owed · المدفوع $paid · المتبقي $left');
+  String get amountYouPaid => _tr('Amount you paid', 'المبلغ الذي دفعته');
+  String get partPaymentHint => _tr('You can pay part now and the rest later', 'يمكنك دفع جزء الآن والباقي لاحقًا');
+  String moreThanRemaining(String left) => _tr('More than what is left ($left)', 'أكبر من المتبقي ($left)');
+  String get leftToPayTotal => _tr('Left to pay on maintenance', 'المتبقي لسداد الصيانة');
+  String requestsCount(int n) => _tr(n == 1 ? '1 request' : '$n requests', '$n طلب');
+  String get sharesToPayHint => _tr(
+      'Approved maintenance paid by a neighbour. Choose a request to pay your share; the neighbour confirms each payment.',
+      'صيانة معتمدة دفعها أحد الجيران. اختر طلبًا لدفع نصيبك، وسيؤكد الجار كل دفعة.');
+  String get showFullyPaid => _tr('Show fully paid requests', 'عرض الطلبات المسددة بالكامل');
+  String get noSharesToPay => _tr('No maintenance shares to pay', 'لا توجد أنصبة صيانة للدفع');
+  String get allSharesPaid => _tr('All your shares are paid', 'تم سداد كل أنصبتك');
+  String get leftToPay => _tr('Left', 'المتبقي');
+  String pendingAmount(String amount, String name) =>
+      _tr('$amount waiting for $name to confirm', '$amount في انتظار تأكيد $name');
+  String get yourPayments => _tr('Your payments', 'مدفوعاتك');
+  String get sharesToPayTab => _tr('Shares to pay', 'أنصبة للدفع');
+  String get submittedByMe => _tr('Submitted by me', 'طلباتي');
   String get stillLoading => _tr('This is taking longer than usual', 'التحميل يستغرق وقتاً أطول من المعتاد');
   String get stillLoadingHint => _tr(
       'Check your internet connection, then try again. If it keeps happening, sign out and sign in again.',

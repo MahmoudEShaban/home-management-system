@@ -28,19 +28,32 @@ String maintenanceTitle(L10n t, Expense e) {
   return first.isNotEmpty ? first : t.expenseCategory(e.category);
 }
 
-Color _shareColor(BuildContext context, SharePayment? p) {
-  if (p == null || p.status == DuesPaymentStatus.rejected) return dueStateColor(DueState.unpaid);
-  return p.isConfirmed ? dueStateColor(DueState.paid) : dueStateColor(DueState.claimed);
+Color shareStatusColor(ShareStatus s) {
+  if (s.settled) return dueStateColor(DueState.paid);
+  if (s.hasPending) return dueStateColor(DueState.claimed);
+  return dueStateColor(DueState.unpaid);
 }
 
-String _shareLabel(L10n t, SharePayment? p) {
-  if (p == null) return t.dueState(DueState.unpaid);
-  return switch (p.status) {
-    DuesPaymentStatus.confirmed => t.dueState(DueState.paid),
-    DuesPaymentStatus.claimed => t.waitingFor(p.payeeName),
-    DuesPaymentStatus.rejected => t.paymentDeclinedShort,
-  };
+String shareStatusLabel(L10n t, ShareStatus s, String payeeName) {
+  if (s.settled) return t.dueState(DueState.paid);
+  if (s.hasPending) return t.waitingFor(payeeName);
+  if (s.confirmed > 0.005) return t.partlyPaid;
+  final last = s.payments.isEmpty ? null : s.payments.first;
+  if (last != null && last.status == DuesPaymentStatus.rejected) return t.paymentDeclinedShort;
+  return t.dueState(DueState.unpaid);
 }
+
+String _paymentLabel(L10n t, SharePayment p) => switch (p.status) {
+      DuesPaymentStatus.confirmed => t.paymentConfirmedShort,
+      DuesPaymentStatus.claimed => t.waitingFor(p.payeeName),
+      DuesPaymentStatus.rejected => t.paymentDeclinedShort,
+    };
+
+Color _paymentColor(SharePayment p) => switch (p.status) {
+      DuesPaymentStatus.confirmed => dueStateColor(DueState.paid),
+      DuesPaymentStatus.claimed => dueStateColor(DueState.claimed),
+      DuesPaymentStatus.rejected => dueStateColor(DueState.unpaid),
+    };
 
 Future<void> _notify(WidgetRef ref, String toUid, String viaManager, String title, String body, String senderName) async {
   final notifier = ref.read(notifierProvider);
@@ -77,15 +90,13 @@ class MaintenanceSharesSection extends ConsumerWidget {
         .where((e) => e.paidByResident && e.isSplit)
         .toList();
     final payments = ref.watch(residentSharePaymentsProvider).value ?? const <SharePayment>[];
-    final byId = {for (final p in payments) p.id: p};
     String money(double v) => _residentMoney(ref, context, v);
 
-    // Shares this flat owes to another resident (not yet confirmed).
+    // Shares this flat owes to another resident (not yet fully confirmed).
     final toPay = [
       for (final e in expenses)
-        if (e.payToUnitId != m.unitId && e.shareFor(m.unitId) > 0.005)
-          (e, byId[SharePayment.docId(e.id, m.unitId)]),
-    ].where((x) => x.$2?.isConfirmed != true).toList();
+        if (e.payToUnitId != m.unitId && e.shareFor(m.unitId) > 0.005) (e, ShareStatus.of(e, m.unitId, payments)),
+    ].where((x) => !x.$2.settled).toList();
     // Claims from other flats for requests this person submitted.
     final toConfirm = payments.where((p) => p.payeeUid == m.residentUid && p.isClaimed).toList();
     // Requests this person submitted: repaid so far.
@@ -99,25 +110,26 @@ class MaintenanceSharesSection extends ConsumerWidget {
         Panel(
           padding: EdgeInsets.zero,
           child: Column(children: [
-            for (final (e, p) in toPay)
+            for (final (e, st) in toPay)
               ListTile(
                 leading: const Icon(Icons.handyman_outlined),
                 title: Text(maintenanceTitle(t, e)),
                 subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text('${t.payTo(e.payToName)} · ${context.fmtDate(e.date)}'),
+                  if (st.confirmed > 0.005 || st.hasPending)
+                    Text(t.paidSoFar(money(st.confirmed + st.pending), money(st.owed)),
+                        style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12)),
                   const SizedBox(height: 4),
-                  StatusChip(label: _shareLabel(t, p), color: _shareColor(context, p)),
-                  if (p?.status == DuesPaymentStatus.rejected && p!.decisionNote.isNotEmpty)
-                    Text('“${p.decisionNote}”', style: TextStyle(color: cs.error, fontSize: 12)),
+                  StatusChip(label: shareStatusLabel(t, st, e.payToName), color: shareStatusColor(st)),
                 ]),
                 isThreeLine: true,
                 trailing: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.end, children: [
-                  Text(money(e.shareFor(m.unitId)), style: const TextStyle(fontWeight: FontWeight.w700)),
-                  if (p == null || p.status == DuesPaymentStatus.rejected)
+                  Text(money(st.remaining > 0 ? st.remaining : st.owed), style: const TextStyle(fontWeight: FontWeight.w700)),
+                  if (st.remaining > 0)
                     TextButton(
                       style: TextButton.styleFrom(visualDensity: VisualDensity.compact, padding: EdgeInsets.zero),
-                      onPressed: () => _paySheet(context, ref, e),
-                      child: Text(t.iHavePaid),
+                      onPressed: () => payMaintenanceShare(context, ref, e, st),
+                      child: Text(t.payShare),
                     ),
                 ]),
               ),
@@ -141,10 +153,9 @@ class MaintenanceSharesSection extends ConsumerWidget {
               Builder(builder: (context) {
                 final owed = e.shares.where((s) => s.unitId != m.unitId).toList();
                 final total = owed.fold<double>(0, (s, x) => s + x.amount);
-                final got = owed.fold<double>(0, (s, x) {
-                  final p = byId[SharePayment.docId(e.id, x.unitId)];
-                  return s + (p?.isConfirmed == true ? p!.amount : 0);
-                });
+                final got = payments
+                    .where((p) => p.expenseId == e.id && p.isConfirmed && p.unitId != m.unitId)
+                    .fold<double>(0, (s, p) => s + p.amount);
                 return ListTile(
                   leading: Icon(Icons.savings_outlined, color: cs.primary),
                   title: Text(maintenanceTitle(t, e)),
@@ -163,89 +174,106 @@ class MaintenanceSharesSection extends ConsumerWidget {
       ],
     ]);
   }
+}
 
-  Future<void> _paySheet(BuildContext context, WidgetRef ref, Expense e) async {
-    final t = context.t;
-    final m = ref.read(membershipProvider);
-    if (m == null) return;
-    final share = e.shareFor(m.unitId);
-    final amount = TextEditingController(text: numText(share));
-    final note = TextEditingController();
-    var method = PaymentMethod.cash;
-    final attachments = ref.read(attachmentServiceProvider);
-    // Building scope: the resident being repaid (another flat) must see it.
-    final photos = residentPhotoController(ref, AttachmentScope.building);
-    final ok = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (c) => StatefulBuilder(
-        builder: (c, setSheet) => Padding(
-          padding: EdgeInsets.fromLTRB(16, 0, 16, 24 + MediaQuery.of(c).viewInsets.bottom),
-          child: SingleChildScrollView(
-            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Text('${t.iHavePaid} · ${maintenanceTitle(t, e)}', style: Theme.of(c).textTheme.titleLarge),
-              gap8,
-              Text(t.sharePayHint(e.payToName), style: TextStyle(color: Theme.of(c).colorScheme.onSurfaceVariant)),
-              gap16,
-              TextField(
+/// Sheet to pay (part of) this flat's share of a resident-paid maintenance
+/// expense. The claim goes to the resident who paid for confirmation.
+Future<void> payMaintenanceShare(BuildContext context, WidgetRef ref, Expense e, ShareStatus st) async {
+  final t = context.t;
+  final m = ref.read(membershipProvider);
+  if (m == null) return;
+  final amount = TextEditingController(text: numText(st.remaining));
+  final formKey = GlobalKey<FormState>();
+  final note = TextEditingController();
+  var method = PaymentMethod.cash;
+  final attachments = ref.read(attachmentServiceProvider);
+  // Building scope: the resident being repaid (another flat) must see it.
+  final photos = residentPhotoController(ref, AttachmentScope.building);
+  final ok = await showModalBottomSheet<bool>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (c) => StatefulBuilder(
+      builder: (c, setSheet) => Padding(
+        padding: EdgeInsets.fromLTRB(16, 0, 16, 24 + MediaQuery.of(c).viewInsets.bottom),
+        child: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Text('${t.iHavePaid} · ${maintenanceTitle(t, e)}', style: Theme.of(c).textTheme.titleLarge),
+            gap8,
+            Text(t.sharePayHint(e.payToName), style: TextStyle(color: Theme.of(c).colorScheme.onSurfaceVariant)),
+            gap12,
+            Text(t.shareSummary(_residentMoney(ref, c, st.owed), _residentMoney(ref, c, st.confirmed + st.pending),
+                _residentMoney(ref, c, st.remaining))),
+            gap16,
+            Form(
+              key: formKey,
+              child: TextFormField(
                 controller: amount,
+                autofocus: true,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: InputDecoration(labelText: t.amount),
+                decoration: InputDecoration(labelText: t.amountYouPaid, helperText: t.partPaymentHint),
+                validator: (v) {
+                  final x = parseNumber(v ?? '');
+                  if (x == null || x <= 0) return t.invalidNumber;
+                  if (x > st.remaining + 0.01) return t.moreThanRemaining(_residentMoney(ref, c, st.remaining));
+                  return null;
+                },
               ),
-              gap12,
-              Wrap(spacing: 8, runSpacing: 4, children: [
-                for (final pm in PaymentMethod.values)
-                  ChoiceChip(
-                    label: Text(t.paymentMethod(pm)),
-                    selected: method == pm,
-                    onSelected: (_) => setSheet(() => method = pm),
-                  ),
-              ]),
-              gap12,
-              TextField(
-                controller: note,
-                decoration: InputDecoration(labelText: t.notes, hintText: t.paymentNoteHint),
-              ),
-              gap16,
-              AttachmentPicker(controller: photos, label: t.paymentProof),
-              gap16,
-              FilledButton(
-                onPressed: () => Navigator.pop(c, true),
-                style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(50)),
-                child: Text(t.sendToName(e.payToName)),
-              ),
+            ),
+            gap12,
+            Wrap(spacing: 8, runSpacing: 4, children: [
+              for (final pm in PaymentMethod.values)
+                ChoiceChip(
+                  label: Text(t.paymentMethod(pm)),
+                  selected: method == pm,
+                  onSelected: (_) => setSheet(() => method = pm),
+                ),
             ]),
-          ),
+            gap12,
+            TextField(
+              controller: note,
+              decoration: InputDecoration(labelText: t.notes, hintText: t.paymentNoteHint),
+            ),
+            gap16,
+            AttachmentPicker(controller: photos, label: t.paymentProof),
+            gap16,
+            FilledButton(
+              onPressed: () {
+                if (formKey.currentState!.validate()) Navigator.pop(c, true);
+              },
+              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(50)),
+              child: Text(t.sendToName(e.payToName)),
+            ),
+          ]),
         ),
       ),
+    ),
+  );
+  final value = parseNumber(amount.text) ?? 0;
+  final noteText = note.text.trim();
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    amount.dispose();
+    note.dispose();
+    photos.dispose();
+  });
+  if (ok != true || value <= 0) {
+    photos.discard(attachments);
+    return;
+  }
+  try {
+    await claimSharePayment(ref.read(firestoreProvider), m, e,
+        amount: value, method: method, note: noteText, attachmentIds: photos.commit(attachments));
+    await _notify(
+      ref,
+      e.payToUid,
+      m.managerUid,
+      t.ar ? 'دفعة نصيب صيانة في انتظار تأكيدك' : 'Maintenance share paid — please confirm',
+      '${maintenanceTitle(t, e)} · ${m.unitName} · ${numText(value)} · ${m.name}',
+      m.name,
     );
-    final value = parseNumber(amount.text) ?? 0;
-    final noteText = note.text.trim();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      amount.dispose();
-      note.dispose();
-      photos.dispose();
-    });
-    if (ok != true || value <= 0) {
-      photos.discard(attachments);
-      return;
-    }
-    try {
-      await claimSharePayment(ref.read(firestoreProvider), m, e,
-          amount: value, method: method, note: noteText, attachmentIds: photos.commit(attachments));
-      await _notify(
-        ref,
-        e.payToUid,
-        m.managerUid,
-        t.ar ? 'دفعة نصيب صيانة في انتظار تأكيدك' : 'Maintenance share paid — please confirm',
-        '${maintenanceTitle(t, e)} · ${m.unitName} · ${numText(value)} · ${m.name}',
-        m.name,
-      );
-      if (context.mounted) toast(context, t.shareClaimSent(e.payToName));
-    } catch (err) {
-      if (context.mounted) toast(context, '${t.somethingWrong}: $err');
-    }
+    if (context.mounted) toast(context, t.shareClaimSent(e.payToName));
+  } catch (err) {
+    if (context.mounted) toast(context, '${t.somethingWrong}: $err');
   }
 }
 
@@ -374,7 +402,7 @@ class ExpenseSharePaymentsPanel extends ConsumerWidget {
     final cs = Theme.of(context).colorScheme;
     final uid = ref.watch(uidProvider) ?? '';
     final payments = ref.watch(managerSharePaymentsProvider).value ?? const <SharePayment>[];
-    final byUnit = {for (final p in payments.where((p) => p.expenseId == expense.id)) p.unitId: p};
+    final mine = payments.where((p) => p.expenseId == expense.id).toList();
     final units = ref.watch(unitByIdProvider);
     String m(double v) => money(ref, context, v);
     final owed = expense.shares.where((s) => s.unitId != expense.payToUnitId).toList();
@@ -390,18 +418,188 @@ class ExpenseSharePaymentsPanel extends ConsumerWidget {
             ListTile(
               dense: true,
               title: Text(units[s.unitId]?.name ?? s.unitId),
-              subtitle: Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: StatusChip(label: _shareLabel(t, byUnit[s.unitId]), color: _shareColor(context, byUnit[s.unitId])),
-              ),
+              subtitle: Builder(builder: (context) {
+                final st = ShareStatus.of(expense, s.unitId, payments);
+                return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(t.paidSoFar(m(st.confirmed), m(st.owed)), style: const TextStyle(fontSize: 12)),
+                  const SizedBox(height: 2),
+                  StatusChip(label: shareStatusLabel(t, st, expense.payToName), color: shareStatusColor(st)),
+                ]);
+              }),
               trailing: Text(m(s.amount), style: const TextStyle(fontWeight: FontWeight.w600)),
             ),
         ]),
       ),
-      for (final p in byUnit.values.where((p) => p.isClaimed)) ...[
+      for (final p in mine.where((p) => p.isClaimed)) ...[
         gap8,
         SharePaymentCard(payment: p, managerUid: uid, viaManager: '', formatMoney: m, expenses: [expense]),
       ],
+    ]);
+  }
+}
+
+// ─────────────────────────── Resident: Maintenance requests page ───────────────────────────
+
+/// Every approved maintenance request (paid by a resident) that this flat
+/// shares in: choose one, see what's owed, paid and left, and pay any
+/// amount towards it. Each payment goes to the requester to confirm.
+class MaintenanceSharesToPay extends ConsumerStatefulWidget {
+  const MaintenanceSharesToPay({super.key});
+
+  @override
+  ConsumerState<MaintenanceSharesToPay> createState() => _MaintenanceSharesToPayState();
+}
+
+class _MaintenanceSharesToPayState extends ConsumerState<MaintenanceSharesToPay> {
+  bool _showSettled = false;
+  String? _open; // expanded request
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.t;
+    final cs = Theme.of(context).colorScheme;
+    final m = ref.watch(membershipProvider);
+    if (m == null) return const SizedBox.shrink();
+    final payments = ref.watch(residentSharePaymentsProvider).value ?? const <SharePayment>[];
+    final all = [
+      for (final e in (ref.watch(residentExpensesProvider).value ?? const <Expense>[]))
+        if (e.paidByResident && e.isSplit && e.payToUnitId != m.unitId && e.shareFor(m.unitId) > 0.005)
+          (e, ShareStatus.of(e, m.unitId, payments)),
+    ];
+    final outstanding = all.where((x) => !x.$2.settled).toList();
+    final list = _showSettled ? all : outstanding;
+    final left = outstanding.fold<double>(0, (s, x) => s + x.$2.remaining);
+    String money(double v) => _residentMoney(ref, context, v);
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+      children: [
+        Panel(
+          child: Row(children: [
+            Icon(Icons.account_balance_wallet_outlined, color: cs.primary),
+            gap12,
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(t.leftToPayTotal, style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12)),
+                AnimatedNumber(
+                    value: left, format: money, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 20)),
+              ]),
+            ),
+            Text(t.requestsCount(outstanding.length), style: TextStyle(color: cs.onSurfaceVariant)),
+          ]),
+        ),
+        gap8,
+        Text(t.sharesToPayHint, style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12)),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Text(t.showFullyPaid),
+          value: _showSettled,
+          onChanged: (v) => setState(() => _showSettled = v),
+        ),
+        if (list.isEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 32),
+            child: EmptyState(icon: Icons.task_alt, message: all.isEmpty ? t.noSharesToPay : t.allSharesPaid),
+          ),
+        for (final (e, st) in list) ...[
+          Panel(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              InkWell(
+                onTap: () => setState(() => _open = _open == e.id ? null : e.id),
+                child: Row(children: [
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(maintenanceTitle(t, e),
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                      Text('${t.payTo(e.payToName)} · ${context.fmtDate(e.date)}',
+                          style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12)),
+                    ]),
+                  ),
+                  StatusChip(label: shareStatusLabel(t, st, e.payToName), color: shareStatusColor(st)),
+                  Icon(_open == e.id ? Icons.expand_less : Icons.expand_more, color: cs.outline),
+                ]),
+              ),
+              gap12,
+              Row(children: [
+                Expanded(child: _Mini(label: t.yourShare, value: money(st.owed))),
+                Expanded(child: _Mini(label: t.paid, value: money(st.confirmed))),
+                Expanded(child: _Mini(label: t.leftToPay, value: money(st.remaining), strong: st.remaining > 0)),
+              ]),
+              gap8,
+              LinearProgressIndicator(
+                value: st.owed <= 0 ? 1 : ((st.confirmed + st.pending) / st.owed).clamp(0, 1),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              if (st.hasPending)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(t.pendingAmount(money(st.pending), e.payToName),
+                      style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12)),
+                ),
+              AnimatedSize(
+                duration: const Duration(milliseconds: 250),
+                alignment: Alignment.topCenter,
+                child: _open == e.id && st.payments.isNotEmpty
+                    ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                        gap12,
+                        Text(t.yourPayments, style: Theme.of(context).textTheme.labelLarge),
+                        for (final p in st.payments)
+                          ListTile(
+                            dense: true,
+                            contentPadding: EdgeInsets.zero,
+                            title: Text('${money(p.amount)} · ${t.paymentMethod(p.method)}'),
+                            subtitle: Text([
+                              context.fmtDate(p.paidAt),
+                              p.paidByName,
+                              if (p.note.isNotEmpty) '“${p.note}”',
+                              if (p.decisionNote.isNotEmpty) '${p.payeeName}: “${p.decisionNote}”',
+                            ].where((s) => s.isNotEmpty).join(' · ')),
+                            trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                              AttachmentBadge(count: p.attachmentIds.length),
+                              gap8,
+                              StatusChip(label: _paymentLabel(t, p), color: _paymentColor(p)),
+                            ]),
+                            onTap: p.attachmentIds.isEmpty
+                                ? null
+                                : () => openAttachmentViewer(context, m.managerUid, p.attachmentIds),
+                          ),
+                      ])
+                    : const SizedBox(width: double.infinity),
+              ),
+              if (st.remaining > 0) ...[
+                gap12,
+                FilledButton.icon(
+                  onPressed: () => payMaintenanceShare(context, ref, e, st),
+                  icon: const Icon(Icons.payments_outlined),
+                  label: Text(t.payShare),
+                ),
+              ],
+            ]),
+          ),
+          gap12,
+        ],
+      ],
+    );
+  }
+}
+
+class _Mini extends StatelessWidget {
+  const _Mini({required this.label, required this.value, this.strong = false});
+  final String label;
+  final String value;
+  final bool strong;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(label, style: TextStyle(color: cs.onSurfaceVariant, fontSize: 11)),
+      FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: AlignmentDirectional.centerStart,
+        child: Text(value,
+            style: TextStyle(fontWeight: FontWeight.w700, color: strong ? cs.primary : null, fontSize: 15)),
+      ),
     ]);
   }
 }

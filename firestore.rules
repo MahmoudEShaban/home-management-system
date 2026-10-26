@@ -108,14 +108,15 @@ service cloud.firestore {
       match /sharePayments/{paymentId} {
         allow read: if isMember(managerId)
           && resource.data.propertyId == member(managerId).propertyId;
-        allow create, update: if isMember(managerId)
+        // One document per payment, so a share can be paid in parts.
+        allow create: if isMember(managerId)
           && request.resource.data.unitId == member(managerId).unitId
           && request.resource.data.propertyId == member(managerId).propertyId
           && request.resource.data.paidByUid == request.auth.uid
           && request.resource.data.status == 'claimed'
-          && paymentId == request.resource.data.expenseId + '_' + request.resource.data.unitId
-          && request.resource.data.payeeUid == get(/databases/$(database)/documents/users/$(managerId)/expenses/$(request.resource.data.expenseId)).data.payToUid
-          && (resource == null || resource.data.status != 'confirmed');
+          && request.resource.data.amount is number
+          && request.resource.data.amount > 0
+          && request.resource.data.payeeUid == get(/databases/$(database)/documents/users/$(managerId)/expenses/$(request.resource.data.expenseId)).data.payToUid;
         allow update: if isMember(managerId)
           && resource.data.payeeUid == request.auth.uid
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'decisionNote', 'decidedAt'])

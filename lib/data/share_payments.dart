@@ -6,7 +6,8 @@
 // payee — not the manager — confirms or declines. The manager can see every
 // share and can confirm on the payee's behalf.
 //
-// Stored at users/{managerUid}/sharePayments/{expenseId}_{unitId}.
+// Stored at users/{managerUid}/sharePayments/{id}: one document per payment,
+// so a flat can pay its share in several parts.
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,6 +22,7 @@ DateTime _dt(dynamic v) => v is num ? DateTime.fromMillisecondsSinceEpoch(v.toIn
 double _d(dynamic v) => v is num ? v.toDouble() : double.tryParse('$v') ?? 0;
 
 class SharePayment {
+  final String id;
   final String expenseId;
   final String propertyId;
   final String unitId;
@@ -41,6 +43,7 @@ class SharePayment {
   final DateTime? decidedAt;
 
   const SharePayment({
+    this.id = '',
     required this.expenseId,
     required this.propertyId,
     required this.unitId,
@@ -59,12 +62,11 @@ class SharePayment {
     this.decidedAt,
   });
 
-  static String docId(String expenseId, String unitId) => '${expenseId}_$unitId';
-  String get id => docId(expenseId, unitId);
   bool get isConfirmed => status == DuesPaymentStatus.confirmed;
   bool get isClaimed => status == DuesPaymentStatus.claimed;
 
-  factory SharePayment.fromMap(Map<String, dynamic> m) => SharePayment(
+  factory SharePayment.fromMap(String id, Map<String, dynamic> m) => SharePayment(
+        id: id,
         expenseId: '${m['expenseId'] ?? ''}',
         propertyId: '${m['propertyId'] ?? ''}',
         unitId: '${m['unitId'] ?? ''}',
@@ -107,7 +109,7 @@ CollectionReference<Map<String, dynamic>> sharePaymentsOf(FirebaseFirestore db, 
     db.collection('users').doc(managerUid).collection(kSharePayments);
 
 List<SharePayment> _parse(QuerySnapshot<Map<String, dynamic>> s) =>
-    s.docs.map((d) => SharePayment.fromMap(d.data())).toList()..sort((a, b) => b.paidAt.compareTo(a.paidAt));
+    s.docs.map((d) => SharePayment.fromMap(d.id, d.data())).toList()..sort((a, b) => b.paidAt.compareTo(a.paidAt));
 
 /// Resident: share payments in their building (theirs, and those owed to them).
 final residentSharePaymentsProvider = StreamProvider<List<SharePayment>>((ref) {
@@ -136,7 +138,7 @@ Future<void> claimSharePayment(
   String note = '',
   List<String> attachmentIds = const [],
 }) =>
-    sharePaymentsOf(db, m.managerUid).doc(SharePayment.docId(e.id, m.unitId)).set(SharePayment(
+    sharePaymentsOf(db, m.managerUid).add(SharePayment(
           expenseId: e.id,
           propertyId: m.propertyId,
           unitId: m.unitId,
@@ -160,3 +162,24 @@ Future<void> decideSharePayment(FirebaseFirestore db, String managerUid, SharePa
       'decisionNote': note,
       'decidedAt': DateTime.now().millisecondsSinceEpoch,
     });
+
+/// Where one flat stands on its share of a resident-paid maintenance expense.
+class ShareStatus {
+  final double owed;
+  final double confirmed;
+  final double pending;
+  final List<SharePayment> payments; // this flat's, newest first, incl. declined
+
+  const ShareStatus(this.owed, this.confirmed, this.pending, this.payments);
+
+  /// Still to pay after confirmed and waiting payments.
+  double get remaining => (owed - confirmed - pending) > 0.005 ? owed - confirmed - pending : 0;
+  bool get settled => confirmed + 0.005 >= owed;
+  bool get hasPending => pending > 0.005;
+
+  static ShareStatus of(Expense e, String unitId, List<SharePayment> all) {
+    final mine = all.where((p) => p.expenseId == e.id && p.unitId == unitId).toList();
+    double sum(bool Function(SharePayment) f) => mine.where(f).fold<double>(0, (s, p) => s + p.amount);
+    return ShareStatus(e.shareFor(unitId), sum((p) => p.isConfirmed), sum((p) => p.isClaimed), mine);
+  }
+}

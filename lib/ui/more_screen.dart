@@ -17,6 +17,7 @@ import 'community_screens.dart' show ExpenseApprovalsScreen;
 import 'onboarding_screen.dart' show onboardingDoneProvider;
 import 'resident_screens.dart' show FlatStatusPanel, proposalColor;
 import 'settings_screen.dart' show LanguageMenuButton, SettingsScreen;
+import 'share_payments_ui.dart' show MaintenanceSharesToPay;
 import 'spending_screen.dart';
 
 // "More" tab: profile, change name / phone, maintenance requests, settings,
@@ -356,9 +357,7 @@ class _MaintenanceRequestsScreenState extends ConsumerState<MaintenanceRequestsS
     String m(double v) => formatMoney(v, currency, Localizations.localeOf(context).languageCode);
     int count(RequestStatus s) => all.where((p) => p.status == s).length;
 
-    return Scaffold(
-      appBar: AppBar(title: Text(widget.resident ? t.myMaintenanceRequests : t.maintenanceRequests)),
-      body: ListView(
+    final requestsList = ListView(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
         children: [
           SingleChildScrollView(
@@ -436,6 +435,18 @@ class _MaintenanceRequestsScreenState extends ConsumerState<MaintenanceRequestsS
               gap12,
             ],
         ],
+    );
+    final title = Text(widget.resident ? t.myMaintenanceRequests : t.maintenanceRequests);
+    if (!widget.resident) return Scaffold(appBar: AppBar(title: title), body: requestsList);
+    // Residents: what they owe on approved requests, and what they submitted.
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: title,
+          bottom: TabBar(tabs: [Tab(text: t.sharesToPayTab), Tab(text: t.submittedByMe)]),
+        ),
+        body: TabBarView(children: [const MaintenanceSharesToPay(), requestsList]),
       ),
     );
   }

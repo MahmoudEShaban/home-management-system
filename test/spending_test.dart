@@ -36,4 +36,24 @@ void main() {
     expect(counted, 300 + 50 + (500 - 200) + 80);
     expect(items.where((i) => i.pending).single.amount, 100);
   });
+
+  test('share status adds part payments', () {
+    final e = Expense(
+        id: 'r', propertyId: 'p', category: ExpenseCategory.maintenance, amount: 300, date: DateTime(2026, 9, 1),
+        split: SplitMethod.equal, payToUid: 'x', payToUnitId: 'c',
+        shares: const [ExpenseShare('a', 100), ExpenseShare('b', 100), ExpenseShare('c', 100)]);
+    SharePayment pay(double amount, DuesPaymentStatus status) => SharePayment(
+        expenseId: 'r', propertyId: 'p', unitId: 'a', amount: amount, status: status,
+        paidByUid: 'a1', payeeUid: 'x', paidAt: DateTime(2026, 9, 2));
+    final st = ShareStatus.of(e, 'a', [
+      pay(40, DuesPaymentStatus.confirmed),
+      pay(30, DuesPaymentStatus.claimed),
+      pay(50, DuesPaymentStatus.rejected),
+    ]);
+    expect(st.owed, 100);
+    expect(st.confirmed, 40);
+    expect(st.pending, 30);
+    expect(st.remaining, 30);
+    expect(st.settled, isFalse);
+  });
 }
