@@ -13,6 +13,7 @@ import 'ui/expenses_screen.dart';
 import 'ui/invoices_screen.dart';
 import 'ui/properties_screen.dart';
 import 'ui/resident_screens.dart';
+import 'ui/more_screen.dart';
 import 'ui/common.dart';
 import 'ui/onboarding_screen.dart';
 
@@ -125,6 +126,7 @@ class _HomeShellState extends ConsumerState<HomeShell> with WidgetsBindingObserv
       const PropertiesScreen(),
       const ExpensesScreen(),
       const InvoicesScreen(),
+      const MoreScreen(resident: false),
     ];
     return Scaffold(
       body: FadeIndexedStack(index: _index, children: pages),
@@ -148,6 +150,8 @@ class _HomeShellState extends ConsumerState<HomeShell> with WidgetsBindingObserv
               icon: const Icon(Icons.receipt_long_outlined),
               selectedIcon: const Icon(Icons.receipt_long),
               label: t.invoices),
+          NavigationDestination(
+              icon: const Icon(Icons.more_horiz), selectedIcon: const Icon(Icons.more_horiz), label: t.more),
         ],
       ),
     );

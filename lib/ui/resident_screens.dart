@@ -19,6 +19,7 @@ import 'attachments_widgets.dart';
 import 'common.dart';
 import 'invoice_pdf.dart';
 import 'inbox_screens.dart';
+import 'more_screen.dart';
 import 'invoices_screen.dart' show PdfPreviewScreen;
 import 'properties_screen.dart' show compareFloors;
 import 'settings_screen.dart' show LanguageMenuButton;
@@ -352,7 +353,8 @@ class _ResidentHomeState extends ConsumerState<ResidentHome> {
         actions: _residentActions(context, ref),
       ),
       body: FadeIndexedStack(
-          index: _index, children: const [_DuesTab(), _ExpensesTab(), FlatExpensesTab(), _InvoicesTab()]),
+          index: _index,
+          children: const [_DuesTab(), _ExpensesTab(), FlatExpensesTab(), _InvoicesTab(), MoreScreen(resident: true)]),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: (i) => setState(() => _index = i),
@@ -371,6 +373,8 @@ class _ResidentHomeState extends ConsumerState<ResidentHome> {
               icon: const Icon(Icons.receipt_long_outlined),
               selectedIcon: const Icon(Icons.receipt_long),
               label: t.invoices),
+          NavigationDestination(
+              icon: const Icon(Icons.more_horiz), selectedIcon: const Icon(Icons.more_horiz), label: t.more),
         ],
       ),
     );

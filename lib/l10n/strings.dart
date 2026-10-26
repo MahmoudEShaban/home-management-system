@@ -479,6 +479,27 @@ class L10n {
   String get declineStatusChange => _tr('Decline status change', 'رفض تغيير الحالة');
   String get statusChangeApproved => _tr('Flat status updated', 'تم تحديث حالة الشقة');
   String get statusChangeDeclined => _tr('Request declined', 'تم رفض الطلب');
+  // More tab
+  String get more => _tr('More', 'المزيد');
+  String get app => _tr('App', 'التطبيق');
+  String get building => _tr('Building', 'العقار');
+  String get settingsHint => _tr('Business profile, Google Drive backups', 'بيانات النشاط، النسخ الاحتياطي على جوجل درايف');
+  String get noNameYet => _tr('Add your name', 'أضف اسمك');
+  String get changeName => _tr('Change name', 'تغيير الاسم');
+  String get changePhone => _tr('Change phone number', 'تغيير رقم الهاتف');
+  String get myMaintenanceRequests => _tr('My maintenance requests', 'طلبات الصيانة الخاصة بي');
+  String get maintenanceRequests => _tr('Maintenance requests', 'طلبات الصيانة');
+  String maintenanceRequestsCount(int all, int waiting) => _tr(
+      waiting > 0 ? '$all requests · $waiting waiting' : (all == 1 ? '1 request' : '$all requests'),
+      waiting > 0 ? '$all طلب · $waiting في الانتظار' : '$all طلب');
+  String get noMaintenanceRequests => _tr('No maintenance requests', 'لا توجد طلبات صيانة');
+  String get managerNote => _tr('Manager\'s note', 'ملاحظة المدير');
+  String get signOutConfirm => _tr('Sign out of this account?', 'تسجيل الخروج من هذا الحساب؟');
+  String get nameUpdated => _tr('Name updated', 'تم تحديث الاسم');
+  String get phoneUpdated => _tr('Phone number updated', 'تم تحديث رقم الهاتف');
+  String signInPhoneStays(String phone) => _tr(
+      'This updates the number shown to your building manager. You still sign in with $phone.',
+      'سيتم تحديث الرقم الظاهر لمدير العقار. ستظل تسجّل الدخول بالرقم $phone.');
   String get stillLoading => _tr('This is taking longer than usual', 'التحميل يستغرق وقتاً أطول من المعتاد');
   String get stillLoadingHint => _tr(
       'Check your internet connection, then try again. If it keeps happening, sign out and sign in again.',

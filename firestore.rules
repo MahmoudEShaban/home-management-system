@@ -29,6 +29,9 @@ service cloud.firestore {
 
       match /members/{residentId} {
         allow read: if isOwner(residentId);
+        // Residents keep their name and phone up to date (More tab).
+        allow update: if isOwner(residentId)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'phone']);
       }
       match /properties/{propertyId} {
         allow read: if isMember(managerId) && member(managerId).propertyId == propertyId;
@@ -147,6 +150,9 @@ service cloud.firestore {
         && request.resource.data.unitId == resource.data.unitId;
       allow delete: if isOwner(residentId)
         || (signedIn() && resource.data.managerUid == request.auth.uid);
+      // The resident can update their own name and phone on the request.
+      allow update: if isOwner(residentId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'phone']);
     }
 
     // Expenses suggested by residents, waiting for the manager's decision.
