@@ -520,6 +520,26 @@ class L10n {
   String get goodEvening => _tr('Good evening', 'مساء الخير');
   String get fixedMonthly => _tr('Fixed monthly cost', 'التكلفة الشهرية الثابتة');
   String get occupancyStatus => _tr('Who lives here', 'حالة الإشغال');
+  // Maintenance shares repaid to the requester
+  String get maintenanceShares => _tr('Maintenance paid by residents', 'صيانة دفعها السكان');
+  String waitingFor(String name) => _tr('Waiting for $name', 'في انتظار $name');
+  String get paymentDeclinedShort => _tr('Not confirmed', 'لم يتم التأكيد');
+  String payTo(String name) => _tr('Pay to $name', 'الدفع إلى $name');
+  String get sharesToConfirm =>
+      _tr('Payments to confirm for your requests', 'مدفوعات تحتاج تأكيدك لطلباتك');
+  String repaidOf(String got, String total) => _tr('Repaid $got of $total', 'تم سداد $got من $total');
+  String sharePayHint(String name) => _tr(
+      '$name paid for this repair. Pay your flat\'s share to them; they will confirm it.',
+      'دفع $name تكلفة هذا الإصلاح. ادفع نصيب شقتك له، وسيؤكد الاستلام.');
+  String sendToName(String name) => _tr('Send to $name for confirmation', 'إرسال إلى $name للتأكيد');
+  String shareClaimSent(String name) => _tr('Sent to $name to confirm', 'تم الإرسال إلى $name للتأكيد');
+  String get paymentConfirmed => _tr('Payment confirmed', 'تم تأكيد الدفعة');
+  String get paymentRejected => _tr('Marked as not received', 'تم تسجيلها كغير مستلمة');
+  String repaymentsTo(String name) => _tr('Repayments to $name', 'السداد إلى $name');
+  String get repaymentsHint => _tr(
+      'A resident paid for this maintenance. Each flat repays its share to them and they confirm it; you can also confirm on their behalf. Not part of the monthly dues or the fund.',
+      'دفع أحد السكان تكلفة هذه الصيانة. تسدد كل شقة نصيبها له ويؤكد هو الاستلام، ويمكنك التأكيد نيابة عنه. لا تدخل ضمن المستحقات الشهرية أو الصندوق.');
+  String paidByResidentNote(String name) => _tr('Paid by $name · repay directly', 'دفعها $name · السداد له مباشرة');
   String get stillLoading => _tr('This is taking longer than usual', 'التحميل يستغرق وقتاً أطول من المعتاد');
   String get stillLoadingHint => _tr(
       'Check your internet connection, then try again. If it keeps happening, sign out and sign in again.',

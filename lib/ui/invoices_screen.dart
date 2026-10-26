@@ -356,7 +356,7 @@ class _InvoiceFormState extends ConsumerState<InvoiceForm> {
     for (final e in expenses) {
       if (e.propertyId != unit.propertyId || periodKey(e.date) != key) continue;
       final label = '${t.expenseCategory(e.category)}${e.vendor.isEmpty ? '' : ' (${e.vendor})'} – $monthName';
-      if (e.isSplit && e.shareFor(unit.id) > 0) {
+      if (e.isSplit && !e.paidByResident && e.shareFor(unit.id) > 0) {
         _items.add(_ItemRow(label, e.shareFor(unit.id), kind: 'share'));
       } else if (e.unitId == unit.id) {
         _items.add(_ItemRow(label, e.amount, kind: 'flat'));

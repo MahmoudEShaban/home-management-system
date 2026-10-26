@@ -13,6 +13,7 @@ import 'attachments_widgets.dart';
 import 'common.dart';
 import 'community_screens.dart' show ProposalsBanner;
 import 'properties_screen.dart' show compareFloors;
+import 'share_payments_ui.dart' show ExpenseSharePaymentsPanel;
 
 class ExpensesScreen extends ConsumerStatefulWidget {
   const ExpensesScreen({super.key});
@@ -136,6 +137,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                       e.unitId.isEmpty ? t.wholeBuilding : unitById[e.unitId]?.name,
                       if (e.isSplit) t.splitNote(e.shares.length),
                       if (e.proposedByName.isNotEmpty) t.addedByResident(e.proposedByName),
+                      if (e.paidByResident) t.paidByResidentNote(e.payToName),
                       context.fmtDate(e.date),
                     ].whereType<String>().join(' · ')),
                     trailing: Column(
@@ -285,6 +287,11 @@ class _ExpenseFormState extends ConsumerState<ExpenseForm> {
           proposedByName: _e?.proposedByName ?? _p?.residentName ?? '',
           proposalId: _e?.proposalId ?? _p?.id ?? '',
           attachmentIds: photoIds,
+          // Approving a maintenance request: the requester is repaid by the
+          // other flats directly.
+          payToUid: _e?.payToUid ?? (_p?.isMaintenance == true ? _p!.residentUid : ''),
+          payToName: _e?.payToName ?? (_p?.isMaintenance == true ? _p!.residentName : ''),
+          payToUnitId: _e?.payToUnitId ?? (_p?.isMaintenance == true ? _p!.unitId : ''),
         );
     final id = ref.read(expenseRepo).save(expense);
     final arabic = context.t.ar;
@@ -446,6 +453,7 @@ class _ExpenseFormState extends ConsumerState<ExpenseForm> {
                   TextFormField(controller: _notes, maxLines: 3, decoration: InputDecoration(labelText: t.notes)),
                   gap16,
                   AttachmentPicker(controller: _photos, label: t.receiptPhotos),
+                  if (_e != null && _e!.paidByResident && _e!.isSplit) ExpenseSharePaymentsPanel(expense: _e!),
                 ],
               ),
             ),

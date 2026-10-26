@@ -102,6 +102,25 @@ service cloud.firestore {
           && request.resource.data.propertyId == resource.data.propertyId
           && request.resource.data.addedByUid == resource.data.addedByUid;
       }
+      // Repaying a resident who paid for an approved maintenance request.
+      // Each flat claims its share; the resident being repaid (payeeUid,
+      // taken from the expense) confirms or declines. The manager can too.
+      match /sharePayments/{paymentId} {
+        allow read: if isMember(managerId)
+          && resource.data.propertyId == member(managerId).propertyId;
+        allow create, update: if isMember(managerId)
+          && request.resource.data.unitId == member(managerId).unitId
+          && request.resource.data.propertyId == member(managerId).propertyId
+          && request.resource.data.paidByUid == request.auth.uid
+          && request.resource.data.status == 'claimed'
+          && paymentId == request.resource.data.expenseId + '_' + request.resource.data.unitId
+          && request.resource.data.payeeUid == get(/databases/$(database)/documents/users/$(managerId)/expenses/$(request.resource.data.expenseId)).data.payToUid
+          && (resource == null || resource.data.status != 'confirmed');
+        allow update: if isMember(managerId)
+          && resource.data.payeeUid == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'decisionNote', 'decidedAt'])
+          && request.resource.data.status in ['confirmed', 'rejected'];
+      }
       // Dues payments: residents see their building's payments (for the
       // overview) and can mark their own flat as paid. Only the manager can
       // confirm or reject.
@@ -181,7 +200,8 @@ service cloud.firestore {
 
     // Each user's notifications. The owner reads and marks them read.
     // A manager can write to their linked residents, a resident to their
-    // manager, and anyone to themselves.
+    // manager or to another resident of the same manager, and anyone to
+    // themselves.
     match /inbox/{uid}/items/{itemId} {
       allow read, update, delete: if isOwner(uid);
       allow create: if signedIn()
@@ -189,7 +209,11 @@ service cloud.firestore {
         && request.resource.data.read == false
         && (uid == request.auth.uid
             || exists(/databases/$(database)/documents/users/$(request.auth.uid)/members/$(uid))
-            || exists(/databases/$(database)/documents/users/$(uid)/members/$(request.auth.uid)));
+            || exists(/databases/$(database)/documents/users/$(uid)/members/$(request.auth.uid))
+            // Between two residents of the same building manager.
+            || (request.resource.data.get('viaManager', '') != ''
+                && exists(/databases/$(database)/documents/users/$(request.resource.data.viaManager)/members/$(request.auth.uid))
+                && exists(/databases/$(database)/documents/users/$(request.resource.data.viaManager)/members/$(uid))));
     }
   }
 }

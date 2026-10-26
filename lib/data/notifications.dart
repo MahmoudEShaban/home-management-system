@@ -31,6 +31,10 @@ class InboxItem {
   final bool read;
   final DateTime createdAt;
 
+  /// For a message between two residents of the same building: their
+  /// building manager's uid (the Firestore rules check both are linked).
+  final String viaManager;
+
   const InboxItem({
     this.id = '',
     required this.title,
@@ -41,6 +45,7 @@ class InboxItem {
     this.propertyName = '',
     this.read = false,
     required this.createdAt,
+    this.viaManager = '',
   });
 
   factory InboxItem.fromMap(String id, Map<String, dynamic> m) => InboxItem(
@@ -64,6 +69,7 @@ class InboxItem {
         'propertyName': propertyName,
         'read': false,
         'createdAt': createdAt.millisecondsSinceEpoch,
+        if (viaManager.isNotEmpty) 'viaManager': viaManager,
       };
 }
 

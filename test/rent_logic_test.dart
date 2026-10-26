@@ -142,6 +142,22 @@ void main() {
       expect(o.expenses, 200);
     });
 
+    test('maintenance paid by a resident is not in dues or the fund', () {
+      final repaid = Expense(
+          propertyId: 'p', category: ExpenseCategory.maintenance, amount: 500, date: DateTime(2026, 9, 12),
+          split: SplitMethod.equal,
+          shares: splitExpense(amount: 500, units: units, method: SplitMethod.equal),
+          payToUid: 'resident-a', payToName: 'A', payToUnitId: 'a');
+      final all = [...expenses, repaid];
+      final dues = monthlyDues(propertyId: 'p', month: DateTime(2026, 9), units: units, expenses: all);
+      expect(dues.map((d) => d.total), [400, 400]); // 300 fixed + 100 elevator; maintenance excluded
+      final o = buildingOverview(
+          property: p, units: units, expenses: all, payments: payments,
+          month: DateTime(2026, 9), annual: false, today: DateTime(2026, 10, 20));
+      expect(o.expenses, 700); // still listed as a building expense
+      expect(o.fund, 1000 + 700 - 200); // but not paid from the fund
+    });
+
     test('month status', () {
       final st = monthStatuses(propertyId: 'p', month: DateTime(2026, 9), units: units, expenses: expenses, payments: payments);
       expect(st.map((s) => s.state), [DueState.paid, DueState.claimed]);

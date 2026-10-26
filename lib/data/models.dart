@@ -458,6 +458,16 @@ class Expense implements Entity {
   /// Photos (receipts, bills) — ids in users/{manager}/attachments.
   final List<String> attachmentIds;
 
+  /// Set for an approved maintenance request: the resident who submitted it
+  /// paid the cost, so the other flats repay their shares to them (and that
+  /// resident confirms). Such expenses aren't part of the monthly dues or
+  /// the building fund.
+  final String payToUid;
+  final String payToName;
+  final String payToUnitId;
+
+  bool get paidByResident => payToUid.isNotEmpty;
+
   Expense({
     this.id = '',
     required this.propertyId,
@@ -474,6 +484,9 @@ class Expense implements Entity {
     this.proposedByName = '',
     this.proposalId = '',
     this.attachmentIds = const [],
+    this.payToUid = '',
+    this.payToName = '',
+    this.payToUnitId = '',
   });
 
   bool get isSplit => split != SplitMethod.none && shares.isNotEmpty;
@@ -501,6 +514,9 @@ class Expense implements Entity {
         proposedByName: _s(m['proposedByName']),
         proposalId: _s(m['proposalId']),
         attachmentIds: (m['attachmentIds'] as List? ?? const []).map((e) => '$e').toList(),
+        payToUid: _s(m['payToUid']),
+        payToName: _s(m['payToName']),
+        payToUnitId: _s(m['payToUnitId']),
       );
 
   @override
@@ -519,6 +535,9 @@ class Expense implements Entity {
         if (proposedByName.isNotEmpty) 'proposedByName': proposedByName,
         if (proposalId.isNotEmpty) 'proposalId': proposalId,
         'attachmentIds': attachmentIds,
+        if (payToUid.isNotEmpty) 'payToUid': payToUid,
+        if (payToUid.isNotEmpty) 'payToName': payToName,
+        if (payToUid.isNotEmpty) 'payToUnitId': payToUnitId,
       };
 }
 

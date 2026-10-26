@@ -86,8 +86,10 @@ List<FlatDue> monthlyDues({
   required List<Expense> expenses,
 }) {
   final key = periodKey(month);
+  // Maintenance paid by a resident is repaid to them directly, not through
+  // the monthly dues.
   final monthExpenses = expenses
-      .where((e) => e.propertyId == propertyId && e.isSplit && periodKey(e.date) == key)
+      .where((e) => e.propertyId == propertyId && e.isSplit && !e.paidByResident && periodKey(e.date) == key)
       .toList();
   return [
     for (final u in units.where((u) => u.propertyId == propertyId))
@@ -189,9 +191,10 @@ Overview buildingOverview({
 
   final expTotal = pExpenses.where((e) => inRange(periodKey(e.date))).fold<double>(0, (s, e) => s + e.amount);
   final income = pPayments.where((p) => p.isConfirmed && inRange(p.period)).fold<double>(0, (s, p) => s + p.amount);
+  // Expenses a resident paid themselves don't come out of the fund.
   final fund = property.fundOpening +
       pPayments.where((p) => p.isConfirmed).fold<double>(0, (s, p) => s + p.amount) -
-      pExpenses.fold<double>(0, (s, e) => s + e.amount);
+      pExpenses.where((e) => !e.paidByResident).fold<double>(0, (s, e) => s + e.amount);
 
   // Months to check: from the building's creation (max 24 back) to last month.
   final start = DateTime(property.createdAt.year, property.createdAt.month);

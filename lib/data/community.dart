@@ -700,6 +700,10 @@ class ExpenseProposal {
         proposalId: id,
         // The resident's photos stay with the approved expense.
         attachmentIds: attachmentIds,
+        // Maintenance requests: the requester paid; other flats repay them.
+        payToUid: isMaintenance ? residentUid : '',
+        payToName: isMaintenance ? residentName : '',
+        payToUnitId: isMaintenance ? unitId : '',
       );
 }
 

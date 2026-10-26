@@ -23,6 +23,7 @@ import 'more_screen.dart';
 import 'invoices_screen.dart' show PdfPreviewScreen;
 import 'properties_screen.dart' show compareFloors;
 import 'settings_screen.dart' show LanguageMenuButton;
+import 'share_payments_ui.dart' show MaintenanceSharesSection;
 import 'dues_screen.dart' show dueStateColor;
 import 'flat_expenses_screen.dart';
 import 'overview_section.dart';
@@ -503,6 +504,7 @@ class _DuesTab extends ConsumerWidget {
             AttachmentStrip(managerUid: ref.read(membershipProvider)?.managerUid ?? '', ids: p.attachmentIds),
           ],
         ],
+        const MaintenanceSharesSection(),
         SectionTitle(t.quickActions),
         Wrap(spacing: 8, runSpacing: 8, children: [
           ActionChip(
@@ -711,6 +713,7 @@ class _ExpensesTab extends ConsumerWidget {
                   subtitle: Text([
                     context.fmtDate(e.date),
                     if (e.shareFor(unitId) > 0) '${t.yourShare}: ${m(e.shareFor(unitId))}',
+                    if (e.paidByResident) t.paidByResidentNote(e.payToName),
                   ].join(' · ')),
                   trailing: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
