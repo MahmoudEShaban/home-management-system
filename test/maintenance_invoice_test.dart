@@ -33,4 +33,35 @@ void main() {
         t: const L10n(false), expense: expense, expenseId: 'e1', title: '', number: 'INV-0099', existing: first);
     expect(again.number, 'INV-0007');
   });
+
+  test('missing invoices are found for approved requests, old and new', () {
+    final old = Expense(
+        id: 'old', propertyId: 'p', category: ExpenseCategory.maintenance, amount: 400, date: DateTime(2026, 9, 1));
+    final paid = Expense(
+        id: 'new', propertyId: 'p', category: ExpenseCategory.elevator, amount: 900, date: DateTime(2026, 10, 1),
+        payToUid: 'u2', payToName: 'Sara', payToUnitId: 'flat2');
+    final done = Expense(
+        id: 'done', propertyId: 'p', category: ExpenseCategory.water, amount: 100, date: DateTime(2026, 10, 2),
+        payToUid: 'u3', payToName: 'Ali', payToUnitId: 'flat4');
+    final existing = buildMaintenanceInvoice(
+        t: const L10n(false), expense: done, expenseId: 'done', title: '', number: 'INV-0005');
+    final missing = missingMaintenanceInvoices(
+      t: const L10n(false),
+      approvedMaintenance: [
+        (expenseId: 'old', title: 'Pump', residentName: 'Omar', unitId: 'flat1'),
+        (expenseId: 'new', title: 'Door', residentName: 'Sara', unitId: 'flat2'),
+        (expenseId: 'gone', title: 'x', residentName: 'y', unitId: 'z'), // expense deleted
+      ],
+      expenses: [old, paid, done],
+      invoices: [existing],
+      prefix: 'INV-',
+      nextNumber: 6,
+    );
+    expect(missing.map((i) => i.expenseId), ['old', 'new']);
+    expect(missing.map((i) => i.number), ['INV-0006', 'INV-0007']);
+    // Older request: requester and flat come from the request.
+    expect(missing.first.requestedByName, 'Omar');
+    expect(missing.first.unitId, 'flat1');
+    expect(missing.first.total, 400);
+  });
 }

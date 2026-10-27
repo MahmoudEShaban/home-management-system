@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'data/backup_service.dart';
 import 'data/community.dart';
 import 'data/local_alerts.dart';
+import 'data/maintenance_invoice.dart';
+import 'data/models.dart';
 import 'data/providers.dart';
 import 'l10n/strings.dart';
 import 'ui/auth_screen.dart';
@@ -115,6 +117,41 @@ class _HomeShellState extends ConsumerState<HomeShell> with WidgetsBindingObserv
     if (state == AppLifecycleState.resumed) _autoBackup();
   }
 
+  String _invoiceSyncKey = '';
+
+  /// Creates invoices still missing for approved maintenance requests
+  /// (including ones approved before invoices were automatic).
+  void _ensureMaintenanceInvoices(L10n t) {
+    final proposals = ref.watch(managerProposalsProvider).value;
+    final expenses = ref.watch(expensesProvider).value;
+    final invoices = ref.watch(invoicesProvider).value;
+    final profile = ref.watch(profileProvider).value ?? const BusinessProfile();
+    if (proposals == null || expenses == null || invoices == null) return;
+    final missing = missingMaintenanceInvoices(
+      t: t,
+      approvedMaintenance: [
+        for (final p in proposals)
+          if (p.isMaintenance && p.status == RequestStatus.approved && p.expenseId.isNotEmpty)
+            (expenseId: p.expenseId, title: p.title, residentName: p.residentName, unitId: p.unitId),
+      ],
+      expenses: expenses,
+      invoices: invoices,
+      prefix: profile.invoicePrefix,
+      nextNumber: ref.read(userDocRepo).nextInvoiceNumber(invoices),
+    );
+    if (missing.isEmpty) return;
+    final key = missing.map((i) => i.id).join(',');
+    if (key == _invoiceSyncKey) return; // already being written
+    _invoiceSyncKey = key;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final repo = ref.read(invoiceRepo);
+      for (final inv in missing) {
+        repo.save(inv);
+      }
+    });
+  }
+
   void _autoBackup() {
     if (!mounted) return;
     ref.read(backupProvider.notifier).runIfDue();
@@ -127,6 +164,8 @@ class _HomeShellState extends ConsumerState<HomeShell> with WidgetsBindingObserv
     ref.watch(buildingCodeSyncProvider);
     // Delete chat messages older than the retention period.
     ref.watch(chatCleanupProvider);
+    // Every approved maintenance request gets its invoice.
+    _ensureMaintenanceInvoices(t);
     final pages = [
       DashboardScreen(onNavigate: (i) => setState(() => _index = i)),
       const PropertiesScreen(),

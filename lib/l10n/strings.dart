@@ -610,6 +610,9 @@ class L10n {
   // Maintenance invoices
   String get submittedByLabel => _tr('Submitted by', 'مقدم الطلب');
   String get totalCost => _tr('Total cost', 'إجمالي التكلفة');
+  String maintenanceInvoiceFundNote(String name) => _tr(
+      'Approved maintenance request from $name, paid through the building dues.',
+      'طلب صيانة معتمد من $name، مدفوع من خلال مستحقات العقار.');
   String maintenanceInvoiceNote(String name) => _tr(
       'Approved maintenance request. Paid by $name; the other flats repay their shares to them.',
       'طلب صيانة معتمد. دفعه $name، وتسدد باقي الشقق أنصبتها له.');
