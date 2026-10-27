@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -251,7 +250,7 @@ class _JoinBuildingScreenState extends ConsumerState<JoinBuildingScreen> {
                           [
                             f.name,
                             t.floorLabel(f.floor),
-                            if (b != null && b.takenUnitIds.contains(f.id)) t.flatHasResidents,
+                            if (b.takenUnitIds.contains(f.id)) t.flatHasResidents,
                           ].join(' · '),
                           overflow: TextOverflow.ellipsis,
                         ),

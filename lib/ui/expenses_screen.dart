@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -364,9 +363,9 @@ class _ExpenseFormState extends ConsumerState<ExpenseForm> {
               icon: const Icon(Icons.delete_outline),
               onPressed: () async {
                 if (await confirmDialog(context, t.deleteConfirm, confirmLabel: t.delete)) {
-                  ref.read(expenseRepo).delete(_e!.id);
-                  if (_e!.paidByResident) ref.read(invoiceRepo).delete(maintenanceInvoiceId(_e!.id));
-                  for (final id in _e!.attachmentIds) {
+                  ref.read(expenseRepo).delete(_e.id);
+                  if (_e.paidByResident) ref.read(invoiceRepo).delete(maintenanceInvoiceId(_e.id));
+                  for (final id in _e.attachmentIds) {
                     _attachments.delete(_photos.managerUid, id).catchError((Object e) => debugPrint('$e'));
                   }
                   if (context.mounted) Navigator.pop(context);
@@ -472,7 +471,7 @@ class _ExpenseFormState extends ConsumerState<ExpenseForm> {
                   TextFormField(controller: _notes, maxLines: 3, decoration: InputDecoration(labelText: t.notes)),
                   gap16,
                   AttachmentPicker(controller: _photos, label: t.receiptPhotos),
-                  if (_e != null && _e!.paidByResident && _e!.isSplit) ExpenseSharePaymentsPanel(expense: _e!),
+                  if (_e != null && _e.paidByResident && _e.isSplit) ExpenseSharePaymentsPanel(expense: _e),
                 ],
               ),
             ),

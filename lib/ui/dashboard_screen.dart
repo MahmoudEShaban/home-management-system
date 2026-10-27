@@ -250,7 +250,6 @@ class _StatTile extends StatelessWidget {
     required this.value,
     this.subtitle,
     this.progress,
-    this.valueColor,
     this.onTap,
   });
   final IconData icon;
@@ -258,7 +257,6 @@ class _StatTile extends StatelessWidget {
   final String value;
   final String? subtitle;
   final double? progress;
-  final Color? valueColor;
   final VoidCallback? onTap;
 
   @override
@@ -286,7 +284,7 @@ class _StatTile extends StatelessWidget {
                 style: Theme.of(context)
                     .textTheme
                     .titleLarge
-                    ?.copyWith(fontWeight: FontWeight.w700, color: valueColor)),
+                    ?.copyWith(fontWeight: FontWeight.w700)),
             if (subtitle != null) ...[
               const SizedBox(height: 2),
               Text(subtitle!, style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12)),

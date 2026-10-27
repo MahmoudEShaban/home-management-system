@@ -154,7 +154,7 @@ class SectionTitle extends StatelessWidget {
                     .titleSmall
                     ?.copyWith(fontWeight: FontWeight.w700)),
           ),
-          if (trailing != null) trailing!,
+          ?trailing,
         ]),
       ));
 }

@@ -241,7 +241,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                       duration: const Duration(milliseconds: 250),
                       transitionBuilder: (child, a) => FadeTransition(
                         opacity: a,
-                        child: SizeTransition(sizeFactor: a, axisAlignment: -1, child: child),
+                        child: SizeTransition(sizeFactor: a, alignment: Alignment.topCenter, child: child),
                       ),
                       child: _usePhone
                           ? TextFormField(

@@ -442,7 +442,7 @@ class _InvoiceFormState extends ConsumerState<InvoiceForm> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_e == null ? t.newInvoice : '${t.edit} ${_e!.number}'),
+        title: Text(_e == null ? t.newInvoice : '${t.edit} ${_e.number}'),
         actions: [TextButton(onPressed: _save, child: Text(t.save))],
       ),
       body: Form(
