@@ -793,8 +793,33 @@ class _InvoicesTab extends ConsumerWidget {
 
 // ─────────────────────────── Resident: propose an expense ───────────────────────────
 
+/// Deletes a resident's own request that hasn't been approved, with its photos.
+Future<bool> deleteOwnProposal(BuildContext context, WidgetRef ref, ExpenseProposal p) async {
+  final t = context.t;
+  if (!await confirmDialog(context, t.deleteRequestConfirm, confirmLabel: t.delete)) return false;
+  try {
+    await ref.read(proposalServiceProvider).withdraw(p.id);
+    final attachments = ref.read(attachmentServiceProvider);
+    for (final id in p.attachmentIds) {
+      attachments.delete(p.managerUid, id).catchError((Object e) => debugPrint('$e'));
+    }
+    if (context.mounted) toast(context, t.requestDeleted);
+    return true;
+  } catch (e) {
+    if (context.mounted) toast(context, '${t.somethingWrong}: $e');
+    return false;
+  }
+}
+
+/// Opens the right form to edit a resident's own pending request.
+void editOwnProposal(BuildContext context, ExpenseProposal p) => pushForm(
+    context, p.isMaintenance ? MaintenanceRequestScreen(existing: p) : ProposeExpenseScreen(existing: p));
+
 class ProposeExpenseScreen extends ConsumerStatefulWidget {
-  const ProposeExpenseScreen({super.key});
+  const ProposeExpenseScreen({super.key, this.existing});
+
+  /// The resident's own request, still waiting for approval, to edit.
+  final ExpenseProposal? existing;
 
   @override
   ConsumerState<ProposeExpenseScreen> createState() => _ProposeExpenseScreenState();
@@ -811,13 +836,27 @@ class _ProposeExpenseScreenState extends ConsumerState<ProposeExpenseScreen> {
   Set<String> _excluded = {};
   bool _busy = false;
   late final AttachmentService _attachments = ref.read(attachmentServiceProvider);
-  late final AttachmentController _photos = residentPhotoController(ref, AttachmentScope.building);
+  late final AttachmentController _photos = residentPhotoController(ref, AttachmentScope.building,
+      initial: widget.existing?.attachmentIds ?? const []);
 
   @override
   void initState() {
     super.initState();
     _attachments; // read now: ref can't be used in dispose()
     _photos;
+    final e = widget.existing;
+    if (e != null) {
+      _amount.text = numText(e.amount);
+      _vendor.text = e.vendor;
+      _notes.text = e.notes;
+      _category = e.category;
+      _date = e.date;
+      _split = e.split;
+      if (e.splitFloors.isNotEmpty) {
+        final units = ref.read(residentBuildingUnitsProvider).value ?? const <Unit>[];
+        _excluded = SplitEditor.floorsOf(units).where((f) => !e.splitFloors.contains(f)).toSet();
+      }
+    }
   }
 
   @override
@@ -842,8 +881,10 @@ class _ProposeExpenseScreenState extends ConsumerState<ProposeExpenseScreen> {
       return;
     }
     setState(() => _busy = true);
+    final old = widget.existing;
     try {
       final proposal = ExpenseProposal(
+            id: old?.id ?? '',
             managerUid: m.managerUid,
             propertyId: m.propertyId,
             residentUid: m.residentUid,
@@ -858,19 +899,24 @@ class _ProposeExpenseScreenState extends ConsumerState<ProposeExpenseScreen> {
             split: _split,
             splitFloors: SplitEditor.includedFloors(units, _excluded),
             shares: shares,
-            createdAt: DateTime.now(),
+            createdAt: old?.createdAt ?? DateTime.now(),
             attachmentIds: _photos.commit(_attachments),
           );
-      await ref.read(proposalServiceProvider).submit(proposal);
-      try {
-        await notifyProposalSubmitted(ref, proposal, arabic: t.ar);
-      } catch (e) {
-        debugPrint('Notification not sent: $e');
+      if (old != null) {
+        // Only possible while it's still waiting (Firestore rules check).
+        await ref.read(proposalServiceProvider).update(proposal);
+      } else {
+        await ref.read(proposalServiceProvider).submit(proposal);
+        try {
+          await notifyProposalSubmitted(ref, proposal, arabic: t.ar);
+        } catch (e) {
+          debugPrint('Notification not sent: $e');
+        }
       }
       if (!mounted) return;
       final messenger = ScaffoldMessenger.of(context);
       Navigator.pop(context);
-      messenger.showSnackBar(SnackBar(content: Text(t.expenseSubmitted)));
+      messenger.showSnackBar(SnackBar(content: Text(old != null ? t.requestUpdated : t.expenseSubmitted)));
     } catch (e) {
       if (mounted) toast(context, '${t.somethingWrong}: $e');
     } finally {
@@ -886,8 +932,24 @@ class _ProposeExpenseScreenState extends ConsumerState<ProposeExpenseScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(t.suggestExpense),
-        actions: [TextButton(onPressed: _busy ? null : _submit, child: Text(t.sendForApproval))],
+        title: Text(widget.existing != null ? t.editRequest : t.suggestExpense),
+        actions: [
+          if (widget.existing != null)
+            IconButton(
+              tooltip: t.delete,
+              icon: const Icon(Icons.delete_outline),
+              onPressed: _busy
+                  ? null
+                  : () async {
+                      if (await deleteOwnProposal(context, ref, widget.existing!) && context.mounted) {
+                        Navigator.pop(context);
+                      }
+                    },
+            ),
+          TextButton(
+              onPressed: _busy ? null : _submit,
+              child: Text(widget.existing != null ? t.saveChanges : t.sendForApproval)),
+        ],
       ),
       body: Form(
         key: _form,
@@ -953,7 +1015,7 @@ class _ProposeExpenseScreenState extends ConsumerState<ProposeExpenseScreen> {
               onPressed: _busy ? null : _submit,
               style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(50)),
               icon: const Icon(Icons.send_outlined),
-              label: Text(t.sendForApproval),
+              label: Text(widget.existing != null ? t.saveChanges : t.sendForApproval),
             ),
           ],
         ),
@@ -1008,20 +1070,15 @@ class _MyProposalsPanel extends ConsumerWidget {
                   StatusChip(label: t.proposalStatus(p.status), color: proposalColor(p.status)),
                 ],
               ),
-              onLongPress: p.status == RequestStatus.pending
-                  ? () async {
-                      if (await confirmDialog(context, t.withdrawConfirm, confirmLabel: t.withdraw)) {
-                        await ref.read(proposalServiceProvider).withdraw(p.id);
-                      }
-                    }
-                  : null,
+              onTap: p.status == RequestStatus.pending ? () => editOwnProposal(context, p) : null,
+              onLongPress: p.status != RequestStatus.approved ? () => deleteOwnProposal(context, ref, p) : null,
             ),
         ]),
       ),
       if (list.any((p) => p.status == RequestStatus.pending))
         Padding(
           padding: const EdgeInsets.only(top: 4),
-          child: Text(t.withdrawHint, style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12)),
+          child: Text(t.editRequestHint, style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12)),
         ),
     ]);
   }
@@ -1032,7 +1089,10 @@ class _MyProposalsPanel extends ConsumerWidget {
 /// Resident reports something that needs fixing. The manager approves it and
 /// then sets the cost and how it is split between floors / flats.
 class MaintenanceRequestScreen extends ConsumerStatefulWidget {
-  const MaintenanceRequestScreen({super.key});
+  const MaintenanceRequestScreen({super.key, this.existing});
+
+  /// The resident's own request, still waiting for approval, to edit.
+  final ExpenseProposal? existing;
 
   @override
   ConsumerState<MaintenanceRequestScreen> createState() => _MaintenanceRequestScreenState();
@@ -1046,13 +1106,21 @@ class _MaintenanceRequestScreenState extends ConsumerState<MaintenanceRequestScr
   Urgency _urgency = Urgency.normal;
   bool _busy = false;
   late final AttachmentService _attachments = ref.read(attachmentServiceProvider);
-  late final AttachmentController _photos = residentPhotoController(ref, AttachmentScope.building);
+  late final AttachmentController _photos = residentPhotoController(ref, AttachmentScope.building,
+      initial: widget.existing?.attachmentIds ?? const []);
 
   @override
   void initState() {
     super.initState();
     _attachments; // read now: ref can't be used in dispose()
     _photos;
+    final e = widget.existing;
+    if (e != null) {
+      _title.text = e.title;
+      _details.text = e.notes;
+      _estimate.text = numText(e.amount);
+      _urgency = e.urgency;
+    }
   }
 
   @override
@@ -1070,8 +1138,10 @@ class _MaintenanceRequestScreenState extends ConsumerState<MaintenanceRequestScr
     final m = ref.read(membershipProvider);
     if (m == null || !_form.currentState!.validate()) return;
     setState(() => _busy = true);
+    final old = widget.existing;
     try {
       final request = ExpenseProposal(
+        id: old?.id ?? '',
         kind: ProposalKind.maintenance,
         title: _title.text.trim(),
         urgency: _urgency,
@@ -1083,12 +1153,21 @@ class _MaintenanceRequestScreenState extends ConsumerState<MaintenanceRequestScr
         unitName: m.unitName,
         category: ExpenseCategory.maintenance,
         amount: parseNumber(_estimate.text) ?? 0,
-        date: DateTime.now(),
+        date: old?.date ?? DateTime.now(),
         notes: _details.text.trim(),
         split: SplitMethod.equal,
-        createdAt: DateTime.now(),
+        createdAt: old?.createdAt ?? DateTime.now(),
         attachmentIds: _photos.commit(_attachments),
       );
+      if (old != null) {
+        // Only possible while it's still waiting (Firestore rules check).
+        await ref.read(proposalServiceProvider).update(request);
+        if (!mounted) return;
+        final messenger = ScaffoldMessenger.of(context);
+        Navigator.pop(context);
+        messenger.showSnackBar(SnackBar(content: Text(t.requestUpdated)));
+        return;
+      }
       await ref.read(proposalServiceProvider).submit(request);
       try {
         await ref.read(notifierProvider)?.sendSame([m.managerUid], InboxItem(
@@ -1118,8 +1197,24 @@ class _MaintenanceRequestScreenState extends ConsumerState<MaintenanceRequestScr
     final cs = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
-        title: Text(t.maintenanceRequest),
-        actions: [TextButton(onPressed: _busy ? null : _submit, child: Text(t.send))],
+        title: Text(widget.existing != null ? t.editRequest : t.maintenanceRequest),
+        actions: [
+          if (widget.existing != null)
+            IconButton(
+              tooltip: t.delete,
+              icon: const Icon(Icons.delete_outline),
+              onPressed: _busy
+                  ? null
+                  : () async {
+                      if (await deleteOwnProposal(context, ref, widget.existing!) && context.mounted) {
+                        Navigator.pop(context);
+                      }
+                    },
+            ),
+          TextButton(
+              onPressed: _busy ? null : _submit,
+              child: Text(widget.existing != null ? t.saveChanges : t.send)),
+        ],
       ),
       body: Form(
         key: _form,
@@ -1166,7 +1261,7 @@ class _MaintenanceRequestScreenState extends ConsumerState<MaintenanceRequestScr
               onPressed: _busy ? null : _submit,
               style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(50)),
               icon: const Icon(Icons.send_outlined),
-              label: Text(t.sendForApproval),
+              label: Text(widget.existing != null ? t.saveChanges : t.sendForApproval),
             ),
           ],
         ),

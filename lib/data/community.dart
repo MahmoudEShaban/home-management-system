@@ -738,6 +738,9 @@ class ProposalService {
 
   Future<void> withdraw(String id) => _col.doc(id).delete();
 
+  /// Resident edits their own request while it's still waiting.
+  Future<void> update(ExpenseProposal p) => _col.doc(p.id).set(p.toMap());
+
   Future<void> markApproved(String id, String expenseId) => _col.doc(id).update({
         'status': RequestStatus.approved.name,
         'expenseId': expenseId,

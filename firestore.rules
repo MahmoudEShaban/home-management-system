@@ -211,9 +211,20 @@ service cloud.firestore {
         && resource.data.managerUid == request.auth.uid
         && request.resource.data.managerUid == resource.data.managerUid
         && request.resource.data.residentUid == resource.data.residentUid;
-      // Residents can withdraw while waiting; the manager can always remove.
+      // The resident who sent it can edit it while it's waiting, without
+      // re-addressing it or changing its status.
+      allow update: if signedIn()
+        && resource.data.residentUid == request.auth.uid
+        && resource.data.status == 'pending'
+        && request.resource.data.status == 'pending'
+        && request.resource.data.residentUid == resource.data.residentUid
+        && request.resource.data.managerUid == resource.data.managerUid
+        && request.resource.data.propertyId == resource.data.propertyId
+        && request.resource.data.unitId == resource.data.unitId
+        && request.resource.data.kind == resource.data.kind;
+      // Residents can delete it until it's approved; the manager can always.
       allow delete: if signedIn()
-        && ((resource.data.residentUid == request.auth.uid && resource.data.status == 'pending')
+        && ((resource.data.residentUid == request.auth.uid && resource.data.status != 'approved')
             || resource.data.managerUid == request.auth.uid);
     }
 

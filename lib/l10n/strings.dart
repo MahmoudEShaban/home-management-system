@@ -613,6 +613,16 @@ class L10n {
   String maintenanceInvoiceNote(String name) => _tr(
       'Approved maintenance request. Paid by $name; the other flats repay their shares to them.',
       'طلب صيانة معتمد. دفعه $name، وتسدد باقي الشقق أنصبتها له.');
+  // Editing / deleting own requests
+  String get editRequest => _tr('Edit request', 'تعديل الطلب');
+  String get saveChanges => _tr('Save changes', 'حفظ التعديلات');
+  String get requestUpdated => _tr('Request updated', 'تم تحديث الطلب');
+  String get requestDeleted => _tr('Request deleted', 'تم حذف الطلب');
+  String get deleteRequestConfirm =>
+      _tr('Delete this request? This can\'t be undone.', 'حذف هذا الطلب؟ لا يمكن التراجع عن ذلك.');
+  String get editRequestHint => _tr(
+      'Tap a waiting request to edit it. Press and hold to delete it.',
+      'اضغط على طلب في الانتظار لتعديله، واضغط مطولًا لحذفه.');
   String get stillLoading => _tr('This is taking longer than usual', 'التحميل يستغرق وقتاً أطول من المعتاد');
   String get stillLoadingHint => _tr(
       'Check your internet connection, then try again. If it keeps happening, sign out and sign in again.',

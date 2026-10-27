@@ -16,7 +16,7 @@ import 'chat_screen.dart' show ChatButton;
 import 'common.dart';
 import 'community_screens.dart' show ExpenseApprovalsScreen;
 import 'onboarding_screen.dart' show onboardingDoneProvider;
-import 'resident_screens.dart' show FlatStatusPanel, proposalColor;
+import 'resident_screens.dart' show FlatStatusPanel, deleteOwnProposal, editOwnProposal, proposalColor;
 import 'settings_screen.dart' show LanguageMenuButton, SettingsScreen;
 import 'share_payments_ui.dart' show MaintenanceSharesToPay;
 import 'spending_screen.dart';
@@ -404,9 +404,11 @@ class _MaintenanceRequestsScreenState extends ConsumerState<MaintenanceRequestsS
               Panel(
                 child: InkWell(
                   borderRadius: BorderRadius.circular(12),
-                  onTap: !widget.resident && p.status == RequestStatus.pending
-                      ? () => push(context, const ExpenseApprovalsScreen())
-                      : null,
+                  onTap: p.status != RequestStatus.pending
+                      ? null
+                      : widget.resident
+                          ? () => editOwnProposal(context, p)
+                          : () => push(context, const ExpenseApprovalsScreen()),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Expanded(
@@ -439,6 +441,24 @@ class _MaintenanceRequestsScreenState extends ConsumerState<MaintenanceRequestsS
                     if (p.attachmentIds.isNotEmpty) ...[
                       gap8,
                       AttachmentStrip(managerUid: p.managerUid, ids: p.attachmentIds),
+                    ],
+                    // The resident's own request: edit while waiting, delete
+                    // until it's approved.
+                    if (widget.resident && p.status != RequestStatus.approved) ...[
+                      gap8,
+                      Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+                        TextButton.icon(
+                          onPressed: () => deleteOwnProposal(context, ref, p),
+                          icon: Icon(Icons.delete_outline, color: cs.error),
+                          label: Text(t.delete, style: TextStyle(color: cs.error)),
+                        ),
+                        if (p.status == RequestStatus.pending)
+                          FilledButton.tonalIcon(
+                            onPressed: () => editOwnProposal(context, p),
+                            icon: const Icon(Icons.edit_outlined),
+                            label: Text(t.edit),
+                          ),
+                      ]),
                     ],
                   ]),
                 ),
