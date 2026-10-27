@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -12,6 +14,7 @@ import '../data/notifications.dart';
 import 'attachments_widgets.dart';
 import 'common.dart';
 import 'community_screens.dart' show ProposalsBanner;
+import 'maintenance_admin.dart' show deleteExpenseLinks;
 import 'properties_screen.dart' show compareFloors;
 import 'share_payments_ui.dart' show ExpenseSharePaymentsPanel;
 
@@ -363,8 +366,9 @@ class _ExpenseFormState extends ConsumerState<ExpenseForm> {
               icon: const Icon(Icons.delete_outline),
               onPressed: () async {
                 if (await confirmDialog(context, t.deleteConfirm, confirmLabel: t.delete)) {
-                  ref.read(expenseRepo).delete(_e.id);
-                  if (_e.paidByResident) ref.read(invoiceRepo).delete(maintenanceInvoiceId(_e.id));
+                  // Also removes its invoice, share payments and the
+                  // resident request it was approved from.
+                  unawaited(deleteExpenseLinks(ref, _e.id));
                   for (final id in _e.attachmentIds) {
                     _attachments.delete(_photos.managerUid, id).catchError((Object e) => debugPrint('$e'));
                   }

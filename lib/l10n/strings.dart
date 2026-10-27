@@ -577,6 +577,9 @@ class L10n {
   String get requestDeleted => _tr('Request deleted', 'تم حذف الطلب');
   String get deleteRequestConfirm =>
       _tr('Delete this request? This can\'t be undone.', 'حذف هذا الطلب؟ لا يمكن التراجع عن ذلك.');
+  String get deleteApprovedRequestConfirm => _tr(
+      'Delete this approved request? Its expense, invoice and share payments will be deleted too. This can\'t be undone.',
+      'حذف هذا الطلب المعتمد؟ سيتم حذف المصروف والفاتورة ومدفوعات الحصص المرتبطة به أيضاً. لا يمكن التراجع عن ذلك.');
   String get editRequestHint => _tr(
       'Tap a waiting request to edit it. Press and hold to delete it.',
       'اضغط على طلب في الانتظار لتعديله، واضغط مطولًا لحذفه.');

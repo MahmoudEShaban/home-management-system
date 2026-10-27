@@ -14,6 +14,7 @@ import 'attachments_widgets.dart';
 import 'chat_screen.dart' show ChatButton;
 import 'common.dart';
 import 'community_screens.dart' show ExpenseApprovalsScreen;
+import 'maintenance_admin.dart' show managerDeleteRequest, managerEditRequest;
 import 'onboarding_screen.dart' show onboardingDoneProvider;
 import 'resident_screens.dart' show FlatStatusPanel, deleteOwnProposal, editOwnProposal, proposalColor;
 import 'settings_screen.dart' show LanguageMenuButton, SettingsScreen;
@@ -403,11 +404,11 @@ class _MaintenanceRequestsScreenState extends ConsumerState<MaintenanceRequestsS
               Panel(
                 child: InkWell(
                   borderRadius: BorderRadius.circular(12),
-                  onTap: p.status != RequestStatus.pending
-                      ? null
-                      : widget.resident
-                          ? () => editOwnProposal(context, p)
-                          : () => push(context, const ExpenseApprovalsScreen()),
+                  onTap: widget.resident
+                      ? (p.status == RequestStatus.pending ? () => editOwnProposal(context, p) : null)
+                      : p.status == RequestStatus.pending
+                          ? () => push(context, const ExpenseApprovalsScreen())
+                          : () => managerEditRequest(context, ref, p),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Expanded(
@@ -457,6 +458,23 @@ class _MaintenanceRequestsScreenState extends ConsumerState<MaintenanceRequestsS
                             icon: const Icon(Icons.edit_outlined),
                             label: Text(t.edit),
                           ),
+                      ]),
+                    ],
+                    // The manager can edit or delete any request, whoever
+                    // sent it and whatever its status.
+                    if (!widget.resident) ...[
+                      gap8,
+                      Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+                        TextButton.icon(
+                          onPressed: () => managerDeleteRequest(context, ref, p),
+                          icon: Icon(Icons.delete_outline, color: cs.error),
+                          label: Text(t.delete, style: TextStyle(color: cs.error)),
+                        ),
+                        FilledButton.tonalIcon(
+                          onPressed: () => managerEditRequest(context, ref, p),
+                          icon: const Icon(Icons.edit_outlined),
+                          label: Text(t.edit),
+                        ),
                       ]),
                     ],
                   ]),

@@ -741,6 +741,32 @@ class ProposalService {
   /// Resident edits their own request while it's still waiting.
   Future<void> update(ExpenseProposal p) => _col.doc(p.id).set(p.toMap());
 
+  /// Manager edits any request's details, keeping who sent it and its status.
+  Future<void> managerEdit(
+    String id, {
+    required String title,
+    required String notes,
+    required double amount,
+    required Urgency urgency,
+    required List<String> attachmentIds,
+  }) =>
+      _col.doc(id).update({
+        'title': title,
+        'notes': notes,
+        'amount': amount,
+        'urgency': urgency.name,
+        'attachmentIds': attachmentIds,
+      });
+
+  /// Manager: requests that became [expenseId] when approved.
+  Future<List<ExpenseProposal>> forExpense(String managerUid, String expenseId) async {
+    final s = await _col
+        .where('managerUid', isEqualTo: managerUid)
+        .where('expenseId', isEqualTo: expenseId)
+        .get();
+    return s.docs.map((d) => ExpenseProposal.fromMap(d.id, d.data())).toList();
+  }
+
   Future<void> markApproved(String id, String expenseId) => _col.doc(id).update({
         'status': RequestStatus.approved.name,
         'expenseId': expenseId,

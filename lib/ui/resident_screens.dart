@@ -21,6 +21,7 @@ import 'invoice_pdf.dart';
 import 'inbox_screens.dart';
 import 'more_screen.dart';
 import 'invoices_screen.dart' show PdfPreviewScreen;
+import 'maintenance_admin.dart' show managerDeleteRequest;
 import 'properties_screen.dart' show compareFloors;
 import 'settings_screen.dart' show LanguageMenuButton;
 import 'share_payments_ui.dart' show MaintenanceSharesSection;
@@ -1088,10 +1089,13 @@ class _MyProposalsPanel extends ConsumerWidget {
 /// Resident reports something that needs fixing. The manager approves it and
 /// then sets the cost and how it is split between floors / flats.
 class MaintenanceRequestScreen extends ConsumerStatefulWidget {
-  const MaintenanceRequestScreen({super.key, this.existing});
+  const MaintenanceRequestScreen({super.key, this.existing, this.byManager = false})
+      : assert(!byManager || existing != null);
 
-  /// The resident's own request, still waiting for approval, to edit.
+  /// The resident's own request, still waiting for approval, to edit — or,
+  /// with [byManager], any request the building manager edits.
   final ExpenseProposal? existing;
+  final bool byManager;
 
   @override
   ConsumerState<MaintenanceRequestScreen> createState() => _MaintenanceRequestScreenState();
@@ -1105,8 +1109,16 @@ class _MaintenanceRequestScreenState extends ConsumerState<MaintenanceRequestScr
   Urgency _urgency = Urgency.normal;
   bool _busy = false;
   late final AttachmentService _attachments = ref.read(attachmentServiceProvider);
-  late final AttachmentController _photos = residentPhotoController(ref, AttachmentScope.building,
-      initial: widget.existing?.attachmentIds ?? const []);
+  late final AttachmentController _photos = widget.byManager
+      ? AttachmentController(
+          managerUid: widget.existing!.managerUid,
+          propertyId: widget.existing!.propertyId,
+          unitId: widget.existing!.unitId,
+          scope: AttachmentScope.building,
+          uploaderUid: ref.read(uidProvider) ?? '',
+          initial: widget.existing!.attachmentIds,
+        )
+      : residentPhotoController(ref, AttachmentScope.building, initial: widget.existing?.attachmentIds ?? const []);
 
   @override
   void initState() {
@@ -1134,6 +1146,7 @@ class _MaintenanceRequestScreenState extends ConsumerState<MaintenanceRequestScr
 
   Future<void> _submit() async {
     final t = context.t;
+    if (widget.byManager) return _saveAsManager();
     final m = ref.read(membershipProvider);
     if (m == null || !_form.currentState!.validate()) return;
     setState(() => _busy = true);
@@ -1190,6 +1203,32 @@ class _MaintenanceRequestScreenState extends ConsumerState<MaintenanceRequestScr
     }
   }
 
+  /// The building manager edits the details of anyone's request; who sent
+  /// it and its status stay the same.
+  Future<void> _saveAsManager() async {
+    final t = context.t;
+    if (!_form.currentState!.validate()) return;
+    setState(() => _busy = true);
+    try {
+      await ref.read(proposalServiceProvider).managerEdit(
+            widget.existing!.id,
+            title: _title.text.trim(),
+            notes: _details.text.trim(),
+            amount: parseNumber(_estimate.text) ?? 0,
+            urgency: _urgency,
+            attachmentIds: _photos.commit(_attachments),
+          );
+      if (!mounted) return;
+      final messenger = ScaffoldMessenger.of(context);
+      Navigator.pop(context);
+      messenger.showSnackBar(SnackBar(content: Text(t.requestUpdated)));
+    } catch (e) {
+      if (mounted) toast(context, '${t.somethingWrong}: $e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = context.t;
@@ -1205,7 +1244,10 @@ class _MaintenanceRequestScreenState extends ConsumerState<MaintenanceRequestScr
               onPressed: _busy
                   ? null
                   : () async {
-                      if (await deleteOwnProposal(context, ref, widget.existing!) && context.mounted) {
+                      final deleted = widget.byManager
+                          ? await managerDeleteRequest(context, ref, widget.existing!)
+                          : await deleteOwnProposal(context, ref, widget.existing!);
+                      if (deleted && context.mounted) {
                         Navigator.pop(context);
                       }
                     },
@@ -1220,7 +1262,11 @@ class _MaintenanceRequestScreenState extends ConsumerState<MaintenanceRequestScr
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
           children: [
-            Text(t.maintenanceHint, style: TextStyle(color: cs.onSurfaceVariant)),
+            Text(
+                widget.byManager
+                    ? t.submittedBy(widget.existing!.residentName, widget.existing!.unitName)
+                    : t.maintenanceHint,
+                style: TextStyle(color: cs.onSurfaceVariant)),
             gap16,
             TextFormField(
               controller: _title,
