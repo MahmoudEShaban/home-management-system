@@ -7,7 +7,7 @@ import '../data/maintenance_invoice.dart';
 import '../data/models.dart';
 import '../data/providers.dart';
 import '../l10n/strings.dart';
-import '../data/rent_logic.dart';
+import '../data/dues_logic.dart';
 import '../data/community.dart';
 import '../data/notifications.dart';
 import 'attachments_widgets.dart';

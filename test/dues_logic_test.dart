@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:homemanagement/data/models.dart';
-import 'package:homemanagement/data/rent_logic.dart';
+import 'package:homemanagement/data/dues_logic.dart';
 
 void main() {
   test('models round-trip through maps', () {

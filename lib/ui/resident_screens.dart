@@ -12,7 +12,7 @@ import '../data/local_alerts.dart';
 import '../data/notifications.dart';
 import '../data/phone_account.dart';
 import '../data/providers.dart';
-import '../data/rent_logic.dart';
+import '../data/dues_logic.dart';
 import '../data/status_requests.dart';
 import '../l10n/strings.dart';
 import 'attachments_widgets.dart';

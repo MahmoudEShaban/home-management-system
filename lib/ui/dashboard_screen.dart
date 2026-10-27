@@ -5,7 +5,7 @@ import '../data/backup_service.dart';
 import '../data/community.dart';
 import '../data/models.dart';
 import '../data/providers.dart';
-import '../data/rent_logic.dart';
+import '../data/dues_logic.dart';
 import '../l10n/strings.dart';
 import 'status_requests_screen.dart' show StatusRequestsBanner;
 import 'welcome_header.dart';

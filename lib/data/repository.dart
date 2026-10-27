@@ -9,8 +9,6 @@ import 'models.dart';
 const kCollections = [
   'properties',
   'units',
-  'tenants',
-  'payments',
   'expenses',
   'invoices',
   'duesPayments',

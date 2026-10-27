@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../data/models.dart';
-import '../data/rent_logic.dart';
+import '../data/dues_logic.dart';
 import '../l10n/strings.dart';
 import 'common.dart';
 import 'properties_screen.dart' show compareFloors;

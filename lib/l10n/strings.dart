@@ -1,7 +1,7 @@
 import 'package:flutter/widgets.dart';
 
 import '../data/community.dart' show RequestStatus, Urgency;
-import '../data/rent_logic.dart' show DueState;
+import '../data/dues_logic.dart' show DueState;
 import '../data/models.dart';
 
 /// English / Arabic UI strings. Access with `context.t`.
@@ -69,17 +69,10 @@ class L10n {
       _tr('At least 6 characters', '٦ أحرف على الأقل');
 
   // Dashboard
-  String get expectedRent => _tr('Expected rent', 'الإيجار المتوقع');
   String get collected => _tr('Collected', 'المحصّل');
   String get outstanding => _tr('Outstanding', 'المتبقي');
-  String get netIncome => _tr('Net (collected − expenses)', 'الصافي (المحصّل − المصروفات)');
   String get occupancy => _tr('Occupancy', 'نسبة الإشغال');
-  String unitsOccupied(int o, int t) =>
-      _tr('$o of $t units occupied', '$o من $t وحدة مشغولة');
-  String get overdueTenants => _tr('Overdue rent', 'إيجارات متأخرة');
-  String get noOverdue => _tr('No overdue rent this month', 'لا توجد إيجارات متأخرة هذا الشهر');
   String get quickActions => _tr('Quick actions', 'إجراءات سريعة');
-  String get recordPayment => _tr('Record payment', 'تسجيل دفعة');
   String get addExpense => _tr('Add expense', 'إضافة مصروف');
   String get newInvoice => _tr('New invoice', 'فاتورة جديدة');
   String get lastBackup => _tr('Last backup', 'آخر نسخة احتياطية');
@@ -109,11 +102,8 @@ class L10n {
       'Remove this property\'s units first.', 'احذف وحدات هذا العقار أولًا.');
   String get deleteUnitBlocked =>
       _tr('Unlink the resident account from this flat first.', 'ألغِ ربط حساب الساكن بهذه الشقة أولًا.');
-  String get currentTenant => _tr('Current tenant', 'المستأجر الحالي');
-  String get addTenantHere => _tr('Add tenant to this unit', 'إضافة مستأجر لهذه الوحدة');
 
   // Building structure (floors, flats, status, fixed monthly cost)
-  String get numberOfFloors => _tr('Number of floors', 'عدد الأدوار');
   String get numberOfFlats => _tr('Number of flats', 'عدد الشقق');
   String get buildingStructure => _tr('Building structure', 'هيكل العقار');
   String get monthlyFees => _tr('Fixed monthly cost', 'التكلفة الشهرية الثابتة');
@@ -129,7 +119,6 @@ class L10n {
   String get flatName => _tr('Flat name', 'اسم الشقة');
   String get flatNameHint => _tr("e.g. Mr. Mahmoud Essam's Flat", 'مثال: شقة أ/ محمود عصام');
   String defaultFlatName(int n) => _tr('Flat $n', 'شقة $n');
-  String flatNumber(int n) => _tr('Flat $n', 'شقة $n');
   String floorsCount(int n) => _tr('$n floors', '$n أدوار');
   String get roof => _tr('Roof', 'السطح');
   String get hasGroundFloorLabel => _tr('Ground floor', 'دور أرضي');
@@ -157,52 +146,24 @@ class L10n {
       'سمِّ كل شقة واختر دورها وحالتها وحدد تكلفتها الشهرية الثابتة.');
 
   // Tenants
-  String get addTenant => _tr('Add tenant', 'إضافة مستأجر');
-  String get editTenant => _tr('Edit tenant', 'تعديل المستأجر');
   String get tenant => _tr('Tenant', 'المستأجر');
-  String get monthlyRent => _tr('Monthly rent', 'الإيجار الشهري');
-  String get dueDay => _tr('Due day of month', 'يوم الاستحقاق من الشهر');
-  String get leaseStart => _tr('Lease start', 'بداية العقد');
-  String get leaseEnd => _tr('Lease end (optional)', 'نهاية العقد (اختياري)');
   String get deposit => _tr('Security deposit', 'مبلغ التأمين');
   String get active => _tr('Active', 'نشط');
   String get ended => _tr('Ended', 'منتهي');
-  String get endLease => _tr('End lease', 'إنهاء العقد');
-  String get endLeaseConfirm => _tr(
-      'Mark this lease as ended today? The unit becomes vacant.',
-      'إنهاء العقد اليوم؟ ستصبح الوحدة شاغرة.');
-  String get paymentHistory => _tr('Payment history', 'سجل المدفوعات');
-  String get noPayments => _tr('No payments yet', 'لا توجد مدفوعات بعد');
-  String get selectUnit => _tr('Select a unit', 'اختر وحدة');
-  String get unitTaken => _tr(
-      'This unit already has an active tenant.', 'هذه الوحدة بها مستأجر نشط بالفعل.');
-  String get noUnitsForTenant => _tr(
-      'Add a property and a unit before adding tenants.',
-      'أضف عقارًا ووحدة قبل إضافة المستأجرين.');
-  String dueOn(int day) => _tr('Due on day $day', 'يستحق يوم $day');
-  String get showEnded => _tr('Show ended leases', 'عرض العقود المنتهية');
 
   // Rent
   String get paid => _tr('Paid', 'مدفوع');
-  String get partial => _tr('Partial', 'جزئي');
   String get unpaid => _tr('Unpaid', 'غير مدفوع');
   String get overdue => _tr('Overdue', 'متأخر');
   String get remaining => _tr('Remaining', 'المتبقي');
   String get forMonth => _tr('For month', 'عن شهر');
   String get method => _tr('Method', 'طريقة الدفع');
-  String get noRentDue => _tr(
-      'No active leases for this month.', 'لا توجد عقود نشطة لهذا الشهر.');
-  String paidOf(String paid, String expected) =>
-      _tr('$paid of $expected', '$paid من $expected');
-  String get deletePayment => _tr('Delete payment', 'حذف الدفعة');
 
   // Expenses
   String get editExpense => _tr('Edit expense', 'تعديل المصروف');
   String get category => _tr('Category', 'الفئة');
   String get vendor => _tr('Vendor / provider', 'المورد / الجهة');
   String get billToTenant => _tr('Recharge to tenant on invoice', 'تحميله على المستأجر في الفاتورة');
-  String get billToTenantHint => _tr(
-      'Requires a specific unit', 'يتطلب اختيار وحدة محددة');
   String get noExpenses => _tr('No expenses for this month', 'لا توجد مصروفات لهذا الشهر');
   String get allProperties => _tr('All properties', 'كل العقارات');
 
@@ -274,8 +235,6 @@ class L10n {
   String get reject => _tr('Decline', 'رفض');
   String rejectConfirm(String name) => _tr('Decline $name\'s request?', 'رفض طلب $name؟');
   String get requestApproved => _tr('Resident linked to the flat', 'تم ربط الساكن بالشقة');
-  String flatAlreadyLinked(String name) =>
-      _tr('This flat is already linked to $name. Unlink them first.', 'هذه الشقة مرتبطة بالفعل بـ $name. ألغِ الربط أولًا.');
   String get recentDecisions => _tr('Recent', 'الأحدث');
   String requestStatus(RequestStatus s) => switch (s) {
         RequestStatus.pending => _tr('Pending', 'قيد الانتظار'),
@@ -299,8 +258,6 @@ class L10n {
       'أدخل كود العقار الذي استلمته من مدير العقار ثم اختر شقتك.');
   String get find => _tr('Find', 'بحث');
   String get codeNotFound => _tr('No building found for this code', 'لا يوجد عقار بهذا الكود');
-  String get noFreeFlats => _tr('All flats in this building are already linked. Contact your building manager.',
-      'كل الشقق في هذا العقار مرتبطة بالفعل. تواصل مع مدير العقار.');
   String get yourFlat => _tr('Your flat', 'شقتك');
   String get selectYourFlat => _tr('Choose your flat', 'اختر شقتك');
   String get yourName => _tr('Your name', 'اسمك');
@@ -340,8 +297,6 @@ class L10n {
         _ => _tr('Declined', 'مرفوض'),
       };
   String get withdraw => _tr('Withdraw', 'سحب');
-  String get withdrawConfirm => _tr('Withdraw this expense?', 'سحب هذا المصروف؟');
-  String get withdrawHint => _tr('Press and hold a waiting expense to withdraw it.', 'اضغط مطولًا على مصروف قيد المراجعة لسحبه.');
   String expensesWaiting(int n) => _tr(
       n == 1 ? '1 resident expense waiting for approval' : '$n resident expenses waiting for approval',
       '$n مصروف من السكان في انتظار الموافقة');
@@ -426,7 +381,6 @@ class L10n {
   String flatStatusFees(String occupied, String closed) => _tr(
       'Fixed monthly cost: $occupied when occupied, $closed when not occupied.',
       'التكلفة الشهرية الثابتة: $occupied عند السكن، و$closed عند عدم الإشغال.');
-  String get flatStatusSaved => _tr('Flat status updated', 'تم تحديث حالة الشقة');
   // Private flat expenses
   String get flatExpensesTab => _tr('Flat expenses', 'مصروفات الشقة');
   String get flatExpenses => _tr('Flat\'s own expenses', 'مصروفات الشقة الخاصة');
@@ -708,30 +662,21 @@ class L10n {
 
   // Invoices
   String get invoice => _tr('Invoice', 'فاتورة');
-  String get invoiceNo => _tr('Invoice no.', 'رقم الفاتورة');
   String get issueDate => _tr('Issue date', 'تاريخ الإصدار');
   String get dueDate => _tr('Due date', 'تاريخ الاستحقاق');
   String get items => _tr('Items', 'البنود');
   String get description => _tr('Description', 'الوصف');
   String get addItem => _tr('Add item', 'إضافة بند');
-  String get rentFor => _tr('Rent for', 'إيجار شهر');
   String get billTo => _tr('Bill to', 'فاتورة إلى');
   String get markPaid => _tr('Mark as paid', 'تحديد كمدفوعة');
   String get markUnpaid => _tr('Mark as unpaid', 'تحديد كغير مدفوعة');
   String get cancelInvoice => _tr('Cancel invoice', 'إلغاء الفاتورة');
   String get cancelled => _tr('Cancelled', 'ملغاة');
   String get share => _tr('Share PDF', 'مشاركة PDF');
-  String get print => _tr('Print', 'طباعة');
   String get preview => _tr('Preview', 'معاينة');
   String get noInvoices => _tr('No invoices yet', 'لا توجد فواتير بعد');
   String get atLeastOneItem => _tr('Add at least one item', 'أضف بندًا واحدًا على الأقل');
-  String get includeUtilities => _tr(
-      'Include rechargeable utilities for this month',
-      'إضافة المرافق القابلة للتحميل لهذا الشهر');
-  String get alsoRecordPayment => _tr(
-      'Also record the rent as a payment?', 'تسجيل الإيجار كدفعة أيضًا؟');
   String get thankYou => _tr('Thank you for your payment.', 'شكرًا لسدادكم.');
-  String get selectTenant => _tr('Select a tenant', 'اختر مستأجرًا');
 
   // Settings
   String get language => _tr('Language', 'اللغة');

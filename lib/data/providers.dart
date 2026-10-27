@@ -60,10 +60,6 @@ Repo<T> _repo<T extends Entity>(Ref ref, String name,
 final propertyRepo =
     Provider((ref) => _repo<Property>(ref, 'properties', Property.fromMap));
 final unitRepo = Provider((ref) => _repo<Unit>(ref, 'units', Unit.fromMap));
-final tenantRepo =
-    Provider((ref) => _repo<Tenant>(ref, 'tenants', Tenant.fromMap));
-final paymentRepo =
-    Provider((ref) => _repo<Payment>(ref, 'payments', Payment.fromMap));
 final expenseRepo =
     Provider((ref) => _repo<Expense>(ref, 'expenses', Expense.fromMap));
 final duesPaymentRepo =
@@ -89,16 +85,6 @@ final unitsProvider = StreamProvider<List<Unit>>((ref) => ref
     .watch()
     .map((l) => l..sort((a, b) => _natural(a.name, b.name))));
 
-final tenantsProvider = StreamProvider<List<Tenant>>((ref) => ref
-    .watch(tenantRepo)
-    .watch()
-    .map((l) => l..sort((a, b) => a.name.compareTo(b.name))));
-
-final paymentsProvider = StreamProvider<List<Payment>>((ref) => ref
-    .watch(paymentRepo)
-    .watch()
-    .map((l) => l..sort((a, b) => b.date.compareTo(a.date))));
-
 final expensesProvider = StreamProvider<List<Expense>>((ref) => ref
     .watch(expenseRepo)
     .watch()
@@ -121,10 +107,6 @@ final propertyByIdProvider = Provider<Map<String, Property>>((ref) => {
     });
 final unitByIdProvider = Provider<Map<String, Unit>>((ref) => {
       for (final u in ref.watch(unitsProvider).value ?? <Unit>[]) u.id: u
-    });
-final tenantByIdProvider = Provider<Map<String, Tenant>>((ref) => {
-      for (final t in ref.watch(tenantsProvider).value ?? <Tenant>[])
-        t.id: t
     });
 
 /// Month selected on the dashboard and rent screen.

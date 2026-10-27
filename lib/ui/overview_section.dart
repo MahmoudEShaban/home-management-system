@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/legacy.dart';
 
 import '../data/models.dart';
 import '../data/providers.dart';
-import '../data/rent_logic.dart';
+import '../data/dues_logic.dart';
 import '../l10n/strings.dart';
 import 'common.dart';
 
