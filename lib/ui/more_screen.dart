@@ -6,12 +6,14 @@ import '../data/community.dart';
 import '../data/flat_expenses.dart';
 import '../data/google_auth.dart';
 import '../data/local_alerts.dart';
+import '../data/models.dart';
 import '../data/phone_account.dart';
 import '../data/providers.dart';
 import '../data/share_payments.dart';
 import '../l10n/strings.dart';
 import 'attachments_widgets.dart';
 import 'chat_screen.dart' show ChatButton;
+import 'flat_expenses_screen.dart' show FlatExpensesScreen;
 import 'common.dart';
 import 'community_screens.dart' show ExpenseApprovalsScreen;
 import 'maintenance_admin.dart' show managerDeleteRequest, managerEditRequest;
@@ -90,7 +92,7 @@ class MoreScreen extends ConsumerWidget {
               ]),
             ),
           ),
-          if (resident) const _MyFlatSection(),
+          if (resident) const _MyFlatSection() else const _ManagerHomeFlatSection(),
           SectionTitle(t.account),
           Panel(
             padding: EdgeInsets.zero,
@@ -543,6 +545,138 @@ class _MyFlatSection extends ConsumerWidget {
 }
 
 /// Opens "My payments & spending" and shows this year's total.
+/// Manager who lives in one of their own flats: pick it, then keep its
+/// private expenses and see its spending, like a resident does.
+class _ManagerHomeFlatSection extends ConsumerWidget {
+  const _ManagerHomeFlatSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.t;
+    final cs = Theme.of(context).colorScheme;
+    final units = ref.watch(unitsProvider).value ?? const <Unit>[];
+    if (units.isEmpty) return const SizedBox.shrink();
+    final flat = ref.watch(myFlatProvider);
+    final property = flat == null ? null : ref.watch(propertyByIdProvider)[flat.propertyId];
+    final lang = Localizations.localeOf(context).languageCode;
+    final currency = ref.watch(profileProvider).value?.currency ?? 'EGP';
+
+    if (flat == null) {
+      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        SectionTitle(t.myFlatStatus),
+        Panel(
+          padding: EdgeInsets.zero,
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundColor: cs.primaryContainer,
+              child: Icon(Icons.home_outlined, color: cs.onPrimaryContainer),
+            ),
+            title: Text(t.iLiveInMyBuilding, style: const TextStyle(fontWeight: FontWeight.w600)),
+            subtitle: Text(t.chooseHomeFlatHint),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _pickHomeFlat(context, ref),
+          ),
+        ),
+      ]);
+    }
+
+    final year = DateTime.now().year;
+    final yearTotal = (ref.watch(residentFlatExpensesProvider).value ?? const <FlatExpense>[])
+        .where((e) => e.date.year == year)
+        .fold<double>(0, (s, e) => s + e.amount);
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      SectionTitle(t.myFlatStatus),
+      Panel(
+        padding: EdgeInsets.zero,
+        child: Column(children: [
+          ListTile(
+            leading: CircleAvatar(
+              backgroundColor: cs.primaryContainer,
+              child: Icon(Icons.door_front_door_outlined, color: cs.onPrimaryContainer),
+            ),
+            title: Text(flat.unitName, style: const TextStyle(fontWeight: FontWeight.w700)),
+            subtitle: Text(property?.name ?? ''),
+            trailing: IconButton(
+              tooltip: t.changeHomeFlat,
+              icon: const Icon(Icons.edit_outlined),
+              onPressed: () => _pickHomeFlat(context, ref),
+            ),
+          ),
+          const Divider(height: 1),
+          ListTile(
+            leading: const Icon(Icons.home_repair_service_outlined),
+            title: Text(t.flatExpenses),
+            subtitle: Text('$year: ${formatMoney(yearTotal, currency, lang)}'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => push(context, FlatExpensesScreen(unitName: flat.unitName)),
+          ),
+          const Divider(height: 1),
+          ListTile(
+            leading: const Icon(Icons.account_balance_wallet_outlined),
+            title: Text(t.mySpending),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => push(
+                context, SpendingScreen(manager: true, unitId: flat.unitId, title: '${t.mySpending} · ${flat.unitName}')),
+          ),
+        ]),
+      ),
+    ]);
+  }
+}
+
+/// Lets the manager choose the flat they live in, or say they don't.
+Future<void> _pickHomeFlat(BuildContext context, WidgetRef ref) async {
+  final t = context.t;
+  final uid = ref.read(uidProvider);
+  if (uid == null) return;
+  final props = ref.read(propertiesProvider).value ?? const <Property>[];
+  final units = ref.read(unitsProvider).value ?? const <Unit>[];
+  final current = ref.read(managerHomeFlatProvider).value?.unitId;
+  // Unit id picked; '' = "I don't live in any of them".
+  final picked = await showModalBottomSheet<String>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (sheet) => DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.6,
+      maxChildSize: 0.9,
+      builder: (_, scroll) => ListView(controller: scroll, children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: Text(t.chooseHomeFlat, style: Theme.of(sheet).textTheme.titleMedium),
+        ),
+        for (final p in props) ...[
+          if (units.any((u) => u.propertyId == p.id)) SectionTitle(p.name),
+          for (final u in units.where((u) => u.propertyId == p.id))
+            ListTile(
+              leading: Icon(u.id == current ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                  color: u.id == current ? Theme.of(sheet).colorScheme.primary : null),
+              title: Text(u.name),
+              subtitle: u.floor.isEmpty ? null : Text(t.floorLabel(u.floor)),
+              onTap: () => Navigator.pop(sheet, u.id),
+            ),
+        ],
+        if (current != null)
+          ListTile(
+            leading: const Icon(Icons.close),
+            title: Text(t.notLivingInMyBuildings),
+            onTap: () => Navigator.pop(sheet, ''),
+          ),
+        gap16,
+      ]),
+    ),
+  );
+  if (picked == null || picked == current) return;
+  final unit = units.where((u) => u.id == picked).firstOrNull;
+  try {
+    await setManagerHomeFlat(ref.read(firestoreProvider), uid,
+        unit == null ? null : (propertyId: unit.propertyId, unitId: unit.id));
+  } catch (e) {
+    if (context.mounted) toast(context, '${t.somethingWrong}: $e');
+  }
+}
+
 class _SpendingTile extends ConsumerWidget {
   const _SpendingTile();
 

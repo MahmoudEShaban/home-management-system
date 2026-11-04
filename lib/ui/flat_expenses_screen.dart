@@ -9,14 +9,17 @@ import '../data/providers.dart';
 import '../l10n/strings.dart';
 import 'attachments_widgets.dart';
 import 'common.dart';
-import 'resident_screens.dart' show residentPhotoController;
 
 // Private flat expenses: residents of a flat record costs for their own flat.
 // Only residents linked to that flat, and the building manager, can see them.
+// A manager who lives in one of their flats keeps its expenses here too.
 
 String _residentMoney(WidgetRef ref, BuildContext context, double v) => formatMoney(
     v,
-    ref.watch(residentProfileProvider).value?.currency ?? 'EGP',
+    (ref.watch(membershipProvider) != null
+            ? ref.watch(residentProfileProvider).value?.currency
+            : ref.watch(profileProvider).value?.currency) ??
+        'EGP',
     Localizations.localeOf(context).languageCode);
 
 String _label(BuildContext context, FlatExpense e) {
@@ -25,6 +28,18 @@ String _label(BuildContext context, FlatExpense e) {
 }
 
 // ─────────────────────────── Resident tab ───────────────────────────
+
+/// The manager's own flat: the same list as residents get, as a page.
+class FlatExpensesScreen extends StatelessWidget {
+  const FlatExpensesScreen({super.key, required this.unitName});
+  final String unitName;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(title: Text('${context.t.flatExpenses} · $unitName')),
+        body: const FlatExpensesTab(),
+      );
+}
 
 class FlatExpensesTab extends ConsumerWidget {
   const FlatExpensesTab({super.key});
@@ -153,7 +168,15 @@ class _FlatExpenseFormState extends ConsumerState<FlatExpenseForm> {
     super.initState();
     _attachments = ref.read(attachmentServiceProvider);
     // Private to the flat, like the expense itself.
-    _photos = residentPhotoController(ref, AttachmentScope.flat, initial: widget.existing?.attachmentIds ?? const []);
+    final f = ref.read(myFlatProvider);
+    _photos = AttachmentController(
+      managerUid: f?.managerUid ?? '',
+      propertyId: f?.propertyId ?? '',
+      unitId: f?.unitId ?? '',
+      scope: AttachmentScope.flat,
+      uploaderUid: f?.uid ?? '',
+      initial: widget.existing?.attachmentIds ?? const [],
+    );
   }
 
   @override
@@ -170,7 +193,7 @@ class _FlatExpenseFormState extends ConsumerState<FlatExpenseForm> {
     final t = context.t;
     if (!_form.currentState!.validate()) return;
     final service = ref.read(flatExpenseServiceProvider);
-    final m = ref.read(membershipProvider);
+    final m = ref.read(myFlatProvider);
     if (service == null || m == null) return;
     final old = widget.existing;
     final e = FlatExpense(
@@ -183,7 +206,7 @@ class _FlatExpenseFormState extends ConsumerState<FlatExpenseForm> {
       date: _date,
       notes: _notes.text.trim(),
       // Keep who first recorded it.
-      addedByUid: old?.addedByUid ?? m.residentUid,
+      addedByUid: old?.addedByUid ?? m.uid,
       addedByName: old?.addedByName ?? m.name,
       createdAt: old?.createdAt ?? DateTime.now(),
       attachmentIds: _photos.commit(_attachments),

@@ -373,6 +373,13 @@ class L10n {
   String get noFlatsInBuilding =>
       _tr('This building has no flats yet. Contact your building manager.', 'لا توجد شقق في هذا العقار بعد. تواصل مع مدير العقار.');
   String get myFlatStatus => _tr('My flat', 'شقتي');
+  String get iLiveInMyBuilding => _tr('I live in one of my flats', 'أسكن في إحدى شققي');
+  String get chooseHomeFlatHint => _tr(
+      'Choose your flat to keep its own expenses, like residents do.',
+      'اختر شقتك لتسجيل مصروفاتها الخاصة كما يفعل السكان.');
+  String get chooseHomeFlat => _tr('Which flat do you live in?', 'في أي شقة تسكن؟');
+  String get changeHomeFlat => _tr('Change my flat', 'تغيير شقتي');
+  String get notLivingInMyBuildings => _tr('I don\'t live in any of these flats', 'لا أسكن في أي من هذه الشقق');
   String get flatOccupied => _tr('Living here', 'نسكن بها');
   String get flatClosed => _tr('Not occupied', 'غير مشغولة');
   String get flatStatusHint => _tr(
