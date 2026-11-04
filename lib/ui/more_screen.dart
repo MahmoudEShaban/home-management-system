@@ -13,7 +13,7 @@ import '../data/share_payments.dart';
 import '../l10n/strings.dart';
 import 'attachments_widgets.dart';
 import 'chat_screen.dart' show ChatButton;
-import 'flat_expenses_screen.dart' show FlatExpensesScreen;
+import 'flat_expenses_screen.dart' show FlatExpensesScreen, pickHomeFlat;
 import 'common.dart';
 import 'community_screens.dart' show ExpenseApprovalsScreen;
 import 'maintenance_admin.dart' show managerDeleteRequest, managerEditRequest;
@@ -555,8 +555,8 @@ class _ManagerHomeFlatSection extends ConsumerWidget {
     final t = context.t;
     final cs = Theme.of(context).colorScheme;
     final units = ref.watch(unitsProvider).value ?? const <Unit>[];
-    if (units.isEmpty) return const SizedBox.shrink();
     final flat = ref.watch(myFlatProvider);
+    if (units.isEmpty && flat == null) return const SizedBox.shrink();
     final property = flat == null ? null : ref.watch(propertyByIdProvider)[flat.propertyId];
     final lang = Localizations.localeOf(context).languageCode;
     final currency = ref.watch(profileProvider).value?.currency ?? 'EGP';
@@ -574,7 +574,7 @@ class _ManagerHomeFlatSection extends ConsumerWidget {
             title: Text(t.iLiveInMyBuilding, style: const TextStyle(fontWeight: FontWeight.w600)),
             subtitle: Text(t.chooseHomeFlatHint),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () => _pickHomeFlat(context, ref),
+            onTap: () => pickHomeFlat(context, ref),
           ),
         ),
       ]);
@@ -596,11 +596,14 @@ class _ManagerHomeFlatSection extends ConsumerWidget {
             ),
             title: Text(flat.unitName, style: const TextStyle(fontWeight: FontWeight.w700)),
             subtitle: Text(property?.name ?? ''),
-            trailing: IconButton(
-              tooltip: t.changeHomeFlat,
-              icon: const Icon(Icons.edit_outlined),
-              onPressed: () => _pickHomeFlat(context, ref),
-            ),
+            // A flat linked as a resident can't be changed here.
+            trailing: ref.watch(membershipProvider) != null
+                ? null
+                : IconButton(
+                    tooltip: t.changeHomeFlat,
+                    icon: const Icon(Icons.edit_outlined),
+                    onPressed: () => pickHomeFlat(context, ref),
+                  ),
           ),
           const Divider(height: 1),
           ListTile(
@@ -621,59 +624,6 @@ class _ManagerHomeFlatSection extends ConsumerWidget {
         ]),
       ),
     ]);
-  }
-}
-
-/// Lets the manager choose the flat they live in, or say they don't.
-Future<void> _pickHomeFlat(BuildContext context, WidgetRef ref) async {
-  final t = context.t;
-  final uid = ref.read(uidProvider);
-  if (uid == null) return;
-  final props = ref.read(propertiesProvider).value ?? const <Property>[];
-  final units = ref.read(unitsProvider).value ?? const <Unit>[];
-  final current = ref.read(managerHomeFlatProvider).value?.unitId;
-  // Unit id picked; '' = "I don't live in any of them".
-  final picked = await showModalBottomSheet<String>(
-    context: context,
-    isScrollControlled: true,
-    showDragHandle: true,
-    builder: (sheet) => DraggableScrollableSheet(
-      expand: false,
-      initialChildSize: 0.6,
-      maxChildSize: 0.9,
-      builder: (_, scroll) => ListView(controller: scroll, children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-          child: Text(t.chooseHomeFlat, style: Theme.of(sheet).textTheme.titleMedium),
-        ),
-        for (final p in props) ...[
-          if (units.any((u) => u.propertyId == p.id)) SectionTitle(p.name),
-          for (final u in units.where((u) => u.propertyId == p.id))
-            ListTile(
-              leading: Icon(u.id == current ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-                  color: u.id == current ? Theme.of(sheet).colorScheme.primary : null),
-              title: Text(u.name),
-              subtitle: u.floor.isEmpty ? null : Text(t.floorLabel(u.floor)),
-              onTap: () => Navigator.pop(sheet, u.id),
-            ),
-        ],
-        if (current != null)
-          ListTile(
-            leading: const Icon(Icons.close),
-            title: Text(t.notLivingInMyBuildings),
-            onTap: () => Navigator.pop(sheet, ''),
-          ),
-        gap16,
-      ]),
-    ),
-  );
-  if (picked == null || picked == current) return;
-  final unit = units.where((u) => u.id == picked).firstOrNull;
-  try {
-    await setManagerHomeFlat(ref.read(firestoreProvider), uid,
-        unit == null ? null : (propertyId: unit.propertyId, unitId: unit.id));
-  } catch (e) {
-    if (context.mounted) toast(context, '${t.somethingWrong}: $e');
   }
 }
 

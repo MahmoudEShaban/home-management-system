@@ -10,10 +10,12 @@ import '../data/providers.dart';
 import '../l10n/strings.dart';
 import '../data/dues_logic.dart';
 import '../data/community.dart';
+import '../data/flat_expenses.dart' show myFlatProvider;
 import '../data/notifications.dart';
 import 'attachments_widgets.dart';
 import 'common.dart';
 import 'community_screens.dart' show ProposalsBanner;
+import 'flat_expenses_screen.dart' show FlatExpensesTab, HomeFlatPrompt;
 import 'maintenance_admin.dart' show deleteExpenseLinks;
 import 'properties_screen.dart' show compareFloors;
 import 'share_payments_ui.dart' show ExpenseSharePaymentsPanel;
@@ -27,6 +29,9 @@ class ExpensesScreen extends ConsumerStatefulWidget {
 
 class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
   String? _propertyId; // null = all
+
+  /// Showing the private expenses of the flat the manager lives in.
+  bool _myFlat = false;
 
   @override
   Widget build(BuildContext context) {
@@ -47,15 +52,45 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     }
     final breakdown = byCategory.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
     final cs = Theme.of(context).colorScheme;
+    final hasUnits = unitById.isNotEmpty || ref.watch(membershipProvider) != null;
+    final myFlat = ref.watch(myFlatProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text(t.expenses)),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => pushForm(context, ExpenseForm(presetPropertyId: _propertyId)),
-        icon: const Icon(Icons.add),
-        label: Text(t.addExpense),
+      appBar: AppBar(
+        title: Text(t.expenses),
+        // Building expenses, or the private expenses of the manager's own flat.
+        bottom: !hasUnits
+            ? null
+            : PreferredSize(
+                preferredSize: const Size.fromHeight(52),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                  child: SegmentedButton<bool>(
+                    showSelectedIcon: false,
+                    segments: [
+                      ButtonSegment(value: false, icon: const Icon(Icons.apartment_outlined), label: Text(t.building)),
+                      ButtonSegment(
+                          value: true,
+                          icon: const Icon(Icons.door_front_door_outlined),
+                          label: Text(myFlat == null ? t.myFlatStatus : '${t.myFlatStatus} · ${myFlat.unitName}',
+                              overflow: TextOverflow.ellipsis)),
+                    ],
+                    selected: {_myFlat},
+                    onSelectionChanged: (v) => setState(() => _myFlat = v.first),
+                  ),
+                ),
+              ),
       ),
-      body: ListView(
+      floatingActionButton: _myFlat
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: () => pushForm(context, ExpenseForm(presetPropertyId: _propertyId)),
+              icon: const Icon(Icons.add),
+              label: Text(t.addExpense),
+            ),
+      body: _myFlat
+          ? (myFlat == null ? const HomeFlatPrompt() : const FlatExpensesTab())
+          : ListView(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
         children: [
           const MonthSwitcher(),

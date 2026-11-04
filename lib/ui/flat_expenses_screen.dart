@@ -27,6 +27,87 @@ String _label(BuildContext context, FlatExpense e) {
   return e.title.isEmpty ? t.expenseCategory(e.category) : '${t.expenseCategory(e.category)} · ${e.title}';
 }
 
+/// Lets the manager choose the flat they live in, or say they don't.
+Future<void> pickHomeFlat(BuildContext context, WidgetRef ref) async {
+  final t = context.t;
+  final uid = ref.read(uidProvider);
+  if (uid == null) return;
+  final props = ref.read(propertiesProvider).value ?? const <Property>[];
+  final units = ref.read(unitsProvider).value ?? const <Unit>[];
+  final current = ref.read(managerHomeFlatProvider).value?.unitId;
+  // Unit id picked; '' = "I don't live in any of them".
+  final picked = await showModalBottomSheet<String>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (sheet) => DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.6,
+      maxChildSize: 0.9,
+      builder: (_, scroll) => ListView(controller: scroll, children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: Text(t.chooseHomeFlat, style: Theme.of(sheet).textTheme.titleMedium),
+        ),
+        for (final p in props) ...[
+          if (units.any((u) => u.propertyId == p.id)) SectionTitle(p.name),
+          for (final u in units.where((u) => u.propertyId == p.id))
+            ListTile(
+              leading: Icon(u.id == current ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                  color: u.id == current ? Theme.of(sheet).colorScheme.primary : null),
+              title: Text(u.name),
+              subtitle: u.floor.isEmpty ? null : Text(t.floorLabel(u.floor)),
+              onTap: () => Navigator.pop(sheet, u.id),
+            ),
+        ],
+        if (current != null)
+          ListTile(
+            leading: const Icon(Icons.close),
+            title: Text(t.notLivingInMyBuildings),
+            onTap: () => Navigator.pop(sheet, ''),
+          ),
+        gap16,
+      ]),
+    ),
+  );
+  if (picked == null || picked == current) return;
+  final unit = units.where((u) => u.id == picked).firstOrNull;
+  try {
+    await setManagerHomeFlat(ref.read(firestoreProvider), uid,
+        unit == null ? null : (propertyId: unit.propertyId, unitId: unit.id));
+  } catch (e) {
+    if (context.mounted) toast(context, '${t.somethingWrong}: $e');
+  }
+}
+
+/// Manager without a flat chosen yet: asks which flat they live in.
+class HomeFlatPrompt extends ConsumerWidget {
+  const HomeFlatPrompt({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = context.t;
+    final cs = Theme.of(context).colorScheme;
+    return ListView(padding: const EdgeInsets.fromLTRB(16, 24, 16, 32), children: [
+      EmptyState(icon: Icons.home_outlined, message: t.chooseHomeFlatHint),
+      gap16,
+      Center(
+        child: FilledButton.icon(
+          onPressed: () => pickHomeFlat(context, ref),
+          icon: const Icon(Icons.door_front_door_outlined),
+          label: Text(t.iLiveInMyBuilding),
+        ),
+      ),
+      gap12,
+      Row(children: [
+        Icon(Icons.lock_outline, size: 14, color: cs.outline),
+        const SizedBox(width: 6),
+        Expanded(child: Text(t.flatExpensesPrivacy, style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12))),
+      ]),
+    ]);
+  }
+}
+
 // ─────────────────────────── Resident tab ───────────────────────────
 
 /// The manager's own flat: the same list as residents get, as a page.
